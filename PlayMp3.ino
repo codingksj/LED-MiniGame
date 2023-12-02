@@ -92,7 +92,9 @@ void loop() {
     Serial.print(", ");
     Serial.println(cur_interval);
     if(!is_play && data){
-      mp3.stop();
+      cur_play_time = millis();  
+      last_play_time = cur_play_time;
+      last_interval = 0;
     }
     // 지정된 시간 간격이 경과했을 때만 음악을 재생
     if (is_play && (cur_play_time - last_play_time >= last_interval)) {

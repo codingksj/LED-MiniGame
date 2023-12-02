@@ -199,63 +199,6 @@ void ClearMatrix(int start_x, int start_y, int width, int height){
   matrix.fillRect(start_x, start_y, width, height, matrix.Color333(0,0,0));
 };
 
-/*void PlayWaitAnimation() {
-  int xPos = EDGE; // 시작 위치
-  int yPos = EDGE; // 시작 위치
-  int direction = 0;
-  int track_number = 1;
-  int cur_color = 0;
-  int prev_color = 0;
-  int btn = NONE;
-  int data;
-
-  uint16_t colors[] = {
-    matrix.Color333(7, 0, 0),
-    matrix.Color333(0, 0, 7),
-    matrix.Color333(0, 7, 0),
-    matrix.Color333(7, 7, 0),
-    matrix.Color333(0, 7, 7),
-    matrix.Color333(7, 7, 7),
-  };
-
-  while ((btn = ProcessInputButton()) != SELECT) {
-    cur_play_time = millis();
-    cur_interval = game_music_length[track_number];
-    if(cur_play_time-last_play_time >= last_interval){
-      InitMatrixEdge(colors[cur_color]);
-      data = (xPos<<6) + (track_number<<1) + 1;
-      mega_serial.print(data);
-      mega_serial.print(',');
-      Serial.print("sent: ");
-      Serial.println(data);
-      Serial.print("play time :");
-      Serial.print(last_play_time);
-      Serial.print(", ");
-      Serial.println(cur_play_time);
-      Serial.print("interval time :");
-      Serial.print(last_interval);
-      Serial.print(", ");
-      Serial.println(cur_interval);
-
-      track_number = (track_number % MUSIC_NUMBER) + 1;
-      last_play_time = cur_play_time;
-      last_interval = cur_interval;
-      prev_color = cur_color;
-      cur_color = (cur_color+1) % COLOR_COUNT;
-    }
-    matrix.drawRect(xPos, yPos, 2, 2, colors[prev_color]);
-    delay(DELAY_TIME);
-    matrix.drawRect(xPos, yPos, 2, 2, matrix.Color333(0, 0, 0));
-
-    xPos += dx[direction];
-    yPos += dy[direction];
-
-    if (xPos + 2 >= MAT_C - EDGE || xPos <= EDGE || yPos + 2 >= MAT_R - EDGE || yPos <= EDGE) {
-      // Change direction when hitting the edges
-      direction = (direction + 1) % 4;
-    }
-  }
-};*/
 void PlayWaitAnimation() {
   int xPos = EDGE; // 시작 위치
   int yPos = EDGE; // 시작 위치

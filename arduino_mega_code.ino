@@ -14,7 +14,8 @@
 #define D   A3
 #define MEGA_TX 14
 #define MEGA_RX 15
-#define BTN_SRC_1 A7
+#define BTN_SRC_1 A15
+#define BTN_SRC_2 A4
 #define BAUD_RATE 9600
 
 //매트릭스 관련
@@ -22,6 +23,7 @@
 #define MAT_C 64
 #define EDGE 1
 #define DELAY_TIME 125
+#define RECT_COUNT 5
 #define COLOR_COUNT 6
 
 //음악 관련
@@ -37,6 +39,11 @@ typedef struct Rectangle{
   int w;
   int h;
 }Rectangle;
+
+typedef struct Coord{
+  int x;
+  int y;
+}Coord;
 
 enum button_types {
   NONE = 0,
@@ -109,17 +116,27 @@ unsigned long game_music_length[MUSIC_NUMBER+1] = {
   (1*MINUTE)+54*SEC,
   1*SEC
 };
-unsigned long last_play_time, cur_play_time;
-unsigned long last_interval, cur_interval;
+unsigned long last_play_time = 0;
+unsigned long cur_play_time = 0;
+unsigned long last_interval = 0;
+unsigned long cur_interval = 0;
+int track_number = 1;
+bool is_p1_selected = false;
+bool is_p2_selected = false;
 
-int ProcessInputButton(const int button_source);
+int ProcessInputButton1();
+int ProcessInputButton2();
 
 void InitMatrixEdge(uint16_t color); 
 void ClearMatrix(int start_x, int start_y, int width, int height);
 void PlayWaitAnimation();
 void PrintMenu();
 int SelectMenu();
-void ClearMenu();
+void DrawLeftArrow(int start_x, int start_y, uint16_t color);
+void DrawRightArrow(int start_x, int start_y, uint16_t color);
+int CheckOption(int btn1, int btn2);
+int CheckP1(int btn1);
+int CheckP2(int btn2);
 void PrintObject(int* pixels, int pixel_num, int start_x, int start_y, uint16_t color);
 void ClearObject(int* pixels, int pixel_num, int start_x, int start_y);
 void UpdateMatrix();
@@ -137,6 +154,7 @@ void setup() {
   mega_serial.begin(BAUD_RATE);
   
   pinMode(BTN_SRC_1, INPUT);
+  pinMode(BTN_SRC_2, INPUT);
 
   //매트릭스 세팅
   matrix.begin();
@@ -147,22 +165,32 @@ void setup() {
 
 
 void loop() {
-  bool is_game_over = false;
+  int option = WAIT;
 
   PlayWaitAnimation();
   PrintMenu();
-  SelectMenu();
-  ClearMenu();
+  option = SelectMenu();
+  switch(option){
+    case SNAKE:
+      Snake();
+      break;
+    case BREAK:
+      BreakOut();
+      break;
+    default:
+      break;
+  }
+  ClearMatrix(1, 1, MAT_C-2, MAT_R-2);
 }
 
-int ProcessInputButton(const int button_src) {
+int ProcessInputButton1() {
   static unsigned long last_btn_press_time = 0;
   static unsigned long cur_btn_press_time = 0;
   int cur_btn_type = NONE;
   int voltage;
 
   // 현재 버튼 값 읽기
-  voltage = analogRead(button_src);
+  voltage = analogRead(BTN_SRC_1);
   cur_btn_press_time = millis();
 
   if (voltage >= 100 && voltage <= 200) {
@@ -188,10 +216,47 @@ int ProcessInputButton(const int button_src) {
     return NONE;
   }
   last_btn_press_time = cur_btn_press_time;
-  Serial.print("Button Pressed: ");
-  Serial.println(button_names[cur_btn_type]);
+  //Serial.print("Button1 Pressed: ");
+  //Serial.println(button_names[cur_btn_type]);
   return cur_btn_type;
 }
+int ProcessInputButton2(){
+  static unsigned long last_btn_press_time = 0;
+  static unsigned long cur_btn_press_time = 0;
+  int cur_btn_type = NONE;
+  int voltage;
+
+  voltage = analogRead(BTN_SRC_2);
+  cur_btn_press_time = millis();
+
+  if (voltage >= 100 && voltage <= 200) {
+    cur_btn_type = UP;
+  } 
+  else if (voltage <= 50) {
+    cur_btn_type = LEFT;
+  } 
+  else if (voltage >= 450 && voltage <= 550) {
+    cur_btn_type = RIGHT;
+  } 
+  else if (voltage >= 300 && voltage <= 400) {
+    cur_btn_type = DOWN;
+  } 
+  else if (voltage >= 700 && voltage <= 800) {
+    cur_btn_type = SELECT;
+  } 
+  else {
+    cur_btn_type = NONE;
+  }
+
+  if(cur_btn_press_time-last_btn_press_time < DELAY_TIME){
+    return NONE;
+  }
+  last_btn_press_time = cur_btn_press_time;
+  //Serial.print("Button2 Pressed: ");
+  //Serial.println(button_names[cur_btn_type]);
+  return cur_btn_type;
+};
+
 void InitMatrixEdge(uint16_t color) {
   matrix.drawRect(0, 0, MAT_C, MAT_R, color);
 };
@@ -200,14 +265,20 @@ void ClearMatrix(int start_x, int start_y, int width, int height){
 };
 
 void PlayWaitAnimation() {
-  int xPos = EDGE; // 시작 위치
-  int yPos = EDGE; // 시작 위치
-  int direction = 0;
-  int track_number = 2;
+  Rectangle rects[RECT_COUNT] = {
+    {EDGE, EDGE, 2, 2}, 
+    {EDGE+2, EDGE, 4, 4},
+    {EDGE+11, EDGE+4, 6, 6},
+    {EDGE+30, EDGE+10, 8, 8},
+    {EDGE+40, EDGE+19, 10, 10},
+  };
+  int dirs[RECT_COUNT] = {0,1,2,3,0};
   int cur_color = 0;
   int prev_color = 0;
-  int btn = NONE;
+  int btn1 = NONE;
+  int btn2 = NONE;
   int data;
+
   unsigned long last_time = 0;
   unsigned long cur_time = 0;
   uint16_t colors[] = {
@@ -218,26 +289,30 @@ void PlayWaitAnimation() {
     matrix.Color333(0, 7, 7),
     matrix.Color333(7, 7, 7),
   };
-
-  while ((btn = ProcessInputButton(BTN_SRC_1)) != SELECT) {
-    PlayBackGroundMusicMP3(track_number, true);
+  track_number = 2;
+  while (!(btn1 == SELECT || btn2 == SELECT)) {
+    btn1 = ProcessInputButton1();
+    btn2 = ProcessInputButton2();
+    PlayBackGroundMusicMP3(track_number, false);
     cur_time = millis();
-    if(cur_time-last_time >= 10 * SEC){
+    if(cur_time-last_time >= 5 * SEC){
       InitMatrixEdge(colors[cur_color]);
       prev_color = cur_color;
       cur_color = (cur_color+1) % COLOR_COUNT;
       last_time = cur_time;
     }
-    matrix.drawRect(xPos, yPos, 2, 2, colors[prev_color]);
-    delay(100);
-    matrix.drawRect(xPos, yPos, 2, 2, matrix.Color333(0, 0, 0));
 
-    xPos += dx[direction];
-    yPos += dy[direction];
-
-    if (xPos + 2 >= MAT_C - EDGE || xPos <= EDGE || yPos + 2 >= MAT_R - EDGE || yPos <= EDGE) {
-      // Change direction when hitting the edges
-      direction = (direction + 1) % 4;
+    for(int i=0;i<RECT_COUNT;i++){
+      rects[i].x+=dx[dirs[i]];
+      rects[i].y+=dy[dirs[i]];
+      matrix.drawRect(rects[i].x, rects[i].y, rects[i].w, rects[i].h, colors[prev_color]);
+      if ((rects[i].x + rects[i].w) >= MAT_C - EDGE || rects[i].x <= EDGE || (rects[i].y + rects[i].h) >= MAT_R - EDGE || rects[i].y <= EDGE) {
+        dirs[i] = (dirs[i] + 1) % 4;
+      }
+    }
+    delay(75);
+    for(int i=0;i<RECT_COUNT;i++){
+      matrix.drawRect(rects[i].x, rects[i].y, rects[i].w, rects[i].h, matrix.Color333(0, 0, 0));
     }
   }
   StopBackGroundMusic();
@@ -252,65 +327,134 @@ void PrintMenu(){
 };
 
 int SelectMenu(){
-  bool is_game = false;
-  int track_number = 1;
-  int cur_color = 0;
-  int prev_color = 0;
-  int btn = NONE;
+  int game_number = WAIT;
+  int btn1 = NONE;
+  int btn2 = NONE;
+  int option1 = WAIT;
+  int option2 = WAIT;
   int data;
-  while ((btn = ProcessInputButton(BTN_SRC_1)) != SELECT) {
+
+  track_number = 1;
+  is_p1_selected = is_p2_selected = false;
+
+  while (true) {
+    btn1 = ProcessInputButton1();
+    btn2 = ProcessInputButton2();
     PlayBackGroundMusicMP3(track_number, false);
-    switch(btn){
-      case LEFT:
-        Serial.println("left");
-        break;
-      case RIGHT:
-        Serial.println("right");
-        break;
-      case UP:
-        Serial.println("up");
-        break;
-      case DOWN:
-        Serial.println("down");
-        break;
-      case SELECT:
-        Serial.println("select");
-        break;
-      default:
-        Serial.println("None");
-        break;
+    option1 = CheckP1(btn1);
+    option2 = CheckP2(btn2);
+    if(option1 == option2 && option1>0){
+      break;
     }
   }
+  game_number = option1;
+  Serial.print("you choose : ");
+  Serial.println(game_number);
+  delay(1500);
   StopBackGroundMusic();
 };
 
-void ClearMenu(){
-  matrix.drawRect(title.x, title.y, title.w, title.h, matrix.Color333(0,0,0));
-  matrix.drawRect(menu_1.x, menu_1.y, menu_1.w, menu_1.h, matrix.Color333(0,0,0));
-  matrix.drawRect(menu_2.x, menu_2.y, menu_2.w, menu_2.h, matrix.Color333(0,0,0));
-  ClearObject(title_pixels, title_pixels_num, 0, 0);
-  ClearObject(menu_1_pixels, menu_1_pixels_num, 0, 0);
-  ClearObject(menu_2_pixels, menu_2_pixels_num, 0, 0);
+void DrawLeftArrow(int start_x, int start_y, uint16_t color){
+  matrix.drawPixel(start_x, start_y, color);
+  matrix.drawLine(start_x+1, start_y+1, start_x+1, start_y-1, color);
+  matrix.drawLine(start_x+2, start_y+2, start_x+2, start_y-2, color);
 };
+
+void DrawRightArrow(int start_x, int start_y, uint16_t color){
+  matrix.drawPixel(start_x, start_y, color);
+  matrix.drawLine(start_x-1, start_y+1, start_x-1, start_y-1, color);
+  matrix.drawLine(start_x-2, start_y+2, start_x-2, start_y-2, color);
+};
+
+int CheckP1(int btn1){
+  Coord left_arrows[2] = {
+    {menu_1.x + menu_1.w + 1, menu_1.y + 3},
+    {menu_2.x + menu_2.w + 1, menu_2.y + 3}
+  };
+  static Coord cursor_1 = left_arrows[0];
+
+  switch (btn1) {
+    case UP:
+      DrawLeftArrow(left_arrows[1].x, left_arrows[1].y, matrix.Color333(0,0,0));
+      cursor_1 = left_arrows[0];
+      DrawLeftArrow(cursor_1.x, cursor_1.y, matrix.Color333(0,7,0));
+      is_p1_selected = false;
+      break;
+    case DOWN:
+      DrawLeftArrow(left_arrows[0].x, left_arrows[0].y, matrix.Color333(0,0,0));
+      cursor_1 = left_arrows[1];
+      DrawLeftArrow(cursor_1.x, cursor_1.y, matrix.Color333(0,7,0));
+      is_p1_selected = false;
+      break;
+    case SELECT:
+      DrawLeftArrow(left_arrows[0].x, left_arrows[0].y, matrix.Color333(0,0,0));
+      DrawLeftArrow(left_arrows[1].x, left_arrows[1].y, matrix.Color333(0,0,0));
+      DrawLeftArrow(cursor_1.x, cursor_1.y, matrix.Color333(7,0,0));
+      is_p1_selected = true;
+      break;
+    default:
+      break;
+  }
+  if(!is_p1_selected){
+    return WAIT;
+  }
+  return (cursor_1.y == left_arrows[0].y ? SNAKE : BREAK);
+};
+int CheckP2(int btn2){
+  Coord right_arrows[2] = {
+    {menu_1.x - 2, menu_1.y + 3},
+    {menu_2.x - 2, menu_2.y + 3}
+  };
+  static Coord cursor_2 = right_arrows[0];
+
+  switch (btn2) {
+    case UP:
+      DrawRightArrow(right_arrows[1].x, right_arrows[1].y, matrix.Color333(0, 0, 0));
+      cursor_2 = right_arrows[0];
+      DrawRightArrow(cursor_2.x, cursor_2.y, matrix.Color333(0, 7, 0));
+      is_p2_selected = false;
+      break;
+    case DOWN:
+      DrawRightArrow(right_arrows[0].x, right_arrows[0].y, matrix.Color333(0, 0, 0));
+      cursor_2 = right_arrows[1];
+      DrawRightArrow(cursor_2.x, cursor_2.y, matrix.Color333(0, 7, 0));
+      is_p2_selected = false;
+      break;
+    case SELECT:
+      DrawRightArrow(right_arrows[0].x, right_arrows[0].y, matrix.Color333(0, 0, 0));
+      DrawRightArrow(right_arrows[1].x, right_arrows[1].y, matrix.Color333(0, 0, 0));
+      DrawRightArrow(cursor_2.x, cursor_2.y, matrix.Color333(7, 0, 0));
+      is_p2_selected = true;
+      break;
+    default:
+      break;
+  }
+  if(!is_p2_selected){
+    return WAIT;
+  }
+  return (cursor_2.y == right_arrows[0].y ? SNAKE : BREAK);
+};
+
 void PrintObject(int* pixels, int pixel_num, int start_x, int start_y, uint16_t color){
   for(int i=0;i<pixel_num;i++){
     matrix.drawPixel(start_x+pixels[i]%MAT_C, start_y+pixels[i]/MAT_C, color);
   }
 };
+
 void ClearObject(int* pixels, int pixel_num, int start_x, int start_y){
   PrintObject(pixels, pixel_num, start_x, start_y, matrix.Color333(0,0,0));
 };
+
 void PlayBackGroundMusicMP3(const int bgm_number, bool is_play_next) {
-  static unsigned long last_play_time = 0;
-  static unsigned long cur_play_time = 0;
-  static unsigned long last_interval = 0;
-  static unsigned long cur_interval = 0;
-  static int track_number = bgm_number;
   int data;
 
   cur_play_time = millis();
   cur_interval = game_music_length[track_number];
-
+  /*Serial.print(last_play_time);
+  Serial.print(",");
+  Serial.print(cur_play_time);
+  Serial.print(",");
+  Serial.println(last_interval);*/
   if(cur_play_time-last_play_time >= last_interval){
     data = (track_number<<1) + 1;
     mega_serial.print(data);
@@ -331,9 +475,16 @@ void PlayBackGroundMusicMP3(const int bgm_number, bool is_play_next) {
     last_interval = cur_interval;
   }
 };
+
 void StopBackGroundMusic(){
-  mega_serial.print(1<<10);
+  mega_serial.print(2);
+  mega_serial.print(",");
+  Serial.println("STOP!");
+  cur_play_time = millis();  
+  last_play_time = cur_play_time;
+  last_interval = 0;
 };
+
 void PlaySoundEffectMP3(const int se_number);
 
 

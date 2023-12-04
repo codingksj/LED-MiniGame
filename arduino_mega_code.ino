@@ -37,6 +37,7 @@
 #define SNAKE_DELAY 200
 
 #define BALL_DELAY 200
+#define BRICK_NUM 20
 
 SoftwareSerial mega_serial(MEGA_TX, MEGA_RX); 
 SoftwareSerial mp3_serial(6, 7); 
@@ -59,6 +60,9 @@ typedef struct Snake {
   int cur_dir;
   int prev_dir;
 }Snake;
+
+typedef Rectangle Brick;
+typedef Rectangle Paddle;
 
 enum button_types {
   NONE = 0,
@@ -137,11 +141,11 @@ unsigned long game_music_length[MUSIC_NUMBER+1] = {
 };
 unsigned long effect_music_length[EFFECT_NUMBER+1] = {
   0,
-  (1*MINUTE)+41*SEC,
-  36*SEC,
-  (2*MINUTE)+2*SEC,
-  (1*MINUTE)+54*SEC,
-  1*SEC
+  2*SEC,
+  5*SEC,
+  2*SEC,
+  1*SEC,
+  0,
 };
 
 unsigned long bgm_prev_play_time = 0;
@@ -481,9 +485,9 @@ void PlayWaitAnimation() {
   uint16_t colors[] = {
     matrix.Color333(0, 0, 7),
     matrix.Color333(0, 7, 0),
-    matrix.Color333(7, 7, 0),
+    matrix.Color333(2, 7, 7),
     matrix.Color333(0, 7, 7),
-    matrix.Color333(7, 7, 7),
+    matrix.Color333(4, 7, 7),
   };
   track_number = 2;
   se_number = 3;
@@ -491,7 +495,6 @@ void PlayWaitAnimation() {
     btn1 = ProcessInputButton1();
     btn2 = ProcessInputButton2();
     PlayBGM(track_number, false);
-    PlaySoundEffect(se_number, false);
     cur_time = millis();
     if(cur_time-prev_time >= 5 * SEC){
       InitMatrixEdge(colors[cur_color]);
@@ -513,8 +516,8 @@ void PlayWaitAnimation() {
       matrix.drawRect(rects[i].x, rects[i].y, rects[i].w, rects[i].h, matrix.Color333(0, 0, 0));
     }
   }
+  PlaySoundEffect(1, true);
   StopBGM();
-  StopSoundEffect();
 };
 void PrintMenu(){
   matrix.drawRect(title.x, title.y, title.w, title.h, matrix.Color333(3,0,0));
@@ -549,7 +552,9 @@ int SelectMenu(){
   game_number = option1;
   Serial.print("you choose : ");
   Serial.println(game_number);
+  PlaySoundEffect(1, true);
   delay(1500);
+  StopSoundEffect();
   StopBGM();
 
   return game_number;
@@ -591,6 +596,7 @@ int CheckP1(int btn1){
       DrawLeftArrow(left_arrows[0].x, left_arrows[0].y, matrix.Color333(0,0,0));
       DrawLeftArrow(left_arrows[1].x, left_arrows[1].y, matrix.Color333(0,0,0));
       DrawLeftArrow(cursor_1.x, cursor_1.y, matrix.Color333(7,0,0));
+      PlaySoundEffect(1, true);
       is_p1_selected = true;
       break;
     default:
@@ -625,6 +631,7 @@ int CheckP2(int btn2){
       DrawRightArrow(right_arrows[0].x, right_arrows[0].y, matrix.Color333(0, 0, 0));
       DrawRightArrow(right_arrows[1].x, right_arrows[1].y, matrix.Color333(0, 0, 0));
       DrawRightArrow(cursor_2.x, cursor_2.y, matrix.Color333(7, 0, 0));
+      PlaySoundEffect(1, true);
       is_p2_selected = true;
       break;
     default:
@@ -683,25 +690,11 @@ void StopBGM(){
 };
 
 void PlaySoundEffect(const int se_number, bool is_loop){
-  se_cur_play_time = millis();
-  se_cur_interval = effect_music_length[se_number];
-
-  if(se_cur_play_time-se_prev_play_time < se_prev_interval){
-    return;
-  }
-  if(is_loop){
-    mp3.playFromMP3Folder(se_number);
-    se_prev_play_time = se_cur_play_time;
-    se_prev_interval = se_cur_interval;
-  }
-};
+  mp3.playFromMP3Folder(se_number);
+}
 
 void StopSoundEffect(){
   mp3.stop();
-  Serial.println("STOP SE!");
-  se_cur_play_time = millis();  
-  se_prev_play_time = bgm_cur_play_time;
-  se_prev_interval = 0;
 };
 
 
@@ -726,13 +719,12 @@ void StartSnake() {
   bool is_collide = false;
   bool* p_is_food = &is_food;
 
-  GenerateFood(p_food, snake_x, snake_y, snake.length);
-  matrix.drawRect(food.x, food.y, 2, 2, matrix.Color333(7, 0, 0));
-
   for(int i=0;i<snake.length;i++){
     snake_x[i] = snake_init_coords[i].x;
     snake_y[i] = snake_init_coords[i].y;
   }
+  GenerateFood(p_food, snake_x, snake_y, snake.length);
+  matrix.drawRect(food.x, food.y, 2, 2, matrix.Color333(7, 0, 0));
 
   while(is_game){
     PlayBGM(3, false);
@@ -760,17 +752,18 @@ void StartSnake() {
       prev_time = cur_time;
     }
     if(CheckCollision(snake_x, snake_y, p_snake)){
+      StopBGM();
+      PlaySoundEffect(3, true);
       for (int i = 1; i <= snake.length; i++) {
         matrix.drawRect(snake_x[i], snake_y[i], 2, 2, matrix.Color333(7, 0, 0)); 
       }
+      delay(3000);
       break;
     }
     else{
       DrawSnake(snake_x, snake_y, p_snake);
     }
   }
-  delay(1500);
-  StopBGM();
 };
 
 void MoveSnake(char* snake_x, char* snake_y, Snake* snake) {

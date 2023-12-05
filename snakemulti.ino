@@ -100,7 +100,7 @@ const char button_names[6][10] = {
 int dx[] = {-1,0,1,0};
 int dy[] = {0,-1,0,1};
 
-const int title_pixels[] = {
+const int title_pixels[] PROGMEM = {
   398, 402, 404, 406, 410, 412, 417, 418, 419, 422,
   425, 429, 431, 432, 433, 462, 463, 465, 466, 468,
   470, 471, 474, 476, 480, 485, 487, 489, 490, 492,
@@ -111,7 +111,8 @@ const int title_pixels[] = {
   666, 668, 673, 674, 675, 677, 679, 681, 685, 687,
   688, 689
 };
-const int menu_1_pixels[] = {
+
+const int menu_1_pixels[] PROGMEM = {
   689, 981, 982, 983, 985, 989, 992, 995, 998,
   1000, 1001, 1002, 1045, 1049, 1050, 1053, 1055, 1057,
   1059, 1061, 1064, 1109, 1110, 1111, 1113, 1115, 1117,
@@ -120,7 +121,8 @@ const int menu_1_pixels[] = {
   1238, 1239, 1241, 1245, 1247, 1249, 1251, 1254, 1256,
   1257, 1258
 };
-const int menu_2_pixels[] = {
+
+const int menu_2_pixels[] PROGMEM = {
   1429, 1430, 1431, 1434, 1435, 1436, 1439,
   1440, 1441, 1444, 1447, 1450, 1493, 1496, 1498, 1501,
   1503, 1507, 1509, 1511, 1513, 1557, 1558, 1559, 1562,
@@ -164,18 +166,18 @@ int track_number = 1;
 int se_number = 1;
 bool is_p1_selected = false;
 bool is_p2_selected = false;
-char snake_x[SNAKE_1_MAX_LENGTH] = {0};
-char snake_y[SNAKE_1_MAX_LENGTH] = {0};
-char P2snake_x[SNAKE_2_MAX_LENGTH] = {0};
-char P2snake_y[SNAKE_2_MAX_LENGTH] = {0};
+char p1_snake_x[SNAKE_1_MAX_LENGTH] = {0};
+char p1_snake_y[SNAKE_1_MAX_LENGTH] = {0};
+char p2_snake_x[SNAKE_2_MAX_LENGTH] = {0};
+char p2_snake_y[SNAKE_2_MAX_LENGTH] = {0};
 
 //-------------
 
 void StartSnakeMulti();
 
-void MultiGenerateFood(Coord* food, char* snake_x, char* snake_y, char* P2snake_x, char* P2snake_y, int snake_length, int P2snake_length);
+void MultiGenerateFood(Coord* food, char* p1_snake_x, char* p1_snake_y, char* p2_snake_x, char* p2_snake_y, int snake_length, int P2snake_length);
 
-void MultiEatFruit(char* snake_x, char* snake_y, char* othersnake_x, char* othersnake_y, Snake* snake, Snake* othersnake, Coord* food);
+void MultiEatFruit(char* p1_snake_x, char* p1_snake_y, char* otherp1_snake_x, char* otherp1_snake_y, Snake* snake, Snake* othersnake, Coord* food);
 //------------
 
 // 게임 영역 크기
@@ -343,12 +345,12 @@ void PlaySoundEffect(const int se_number, bool is_loop);
 void StopSoundEffect();
 
 void StartSnake();
-void MoveSnake(char* snake_x, char* snake_y, Snake* snake); 
-void DrawSnake(char* snake_x, char* snake_y, Snake* snake); 
-bool CheckCollision(char* snake_x, char* snake_y, Snake* snake);
+void MoveSnake(char* p1_snake_x, char* p1_snake_y, Snake* snake); 
+void DrawSnake(char* p1_snake_x, char* p1_snake_y, Snake* snake); 
+bool CheckCollision(char* p1_snake_x, char* p1_snake_y, Snake* snake);
 bool CheckOpposite(int prev, int cur);
-void GenerateFood(Coord* food, char* snake_x, char* snake_y, int snake_length);
-void EatFruit(char* snake_x, char* snake_y, Snake* snake, Coord* food);
+void GenerateFood(Coord* food, char* p1_snake_x, char* p1_snake_y, int snake_length);
+void EatFruit(char* p1_snake_x, char* p1_snake_y, Snake* snake, Coord* food);
 
 
 void StartBreakOut();
@@ -655,15 +657,17 @@ int CheckP2(int btn2) {
   }
   return (cursor_2.y == left_arrows[0].y ? SNAKE : BREAK);
 };
-void PrintObject(int* pixels, int pixel_num, int start_x, int start_y, uint16_t color){
-  for(int i=0;i<pixel_num;i++){
-    matrix.drawPixel(start_x+pixels[i]%MAT_C, start_y+pixels[i]/MAT_C, color);
+void PrintObject(const int* pixels, int pixel_num, int start_x, int start_y, uint16_t color) {
+  for (int i = 0; i < pixel_num; i++) {
+    int pixel = pgm_read_word(&pixels[i]);
+    matrix.drawPixel(start_x + pixel % MAT_C, start_y + pixel / MAT_C, color);
   }
-};
+}
 
-void ClearObject(int* pixels, int pixel_num, int start_x, int start_y){
-  PrintObject(pixels, pixel_num, start_x, start_y, matrix.Color333(0,0,0));
-};
+void ClearObject(const int* pixels, int pixel_num, int start_x, int start_y) {
+  PrintObject(pixels, pixel_num, start_x, start_y, matrix.Color333(0, 0, 0));
+}
+
 
 void PlayBGM(const int bgm_number, bool is_play_next) {
   int data;
@@ -732,10 +736,10 @@ void StartSnake() {
   bool* p_is_food = &is_food;
 
   for(int i=0;i<snake.length;i++){
-    snake_x[i] = snake_init_coords[i].x;
-    snake_y[i] = snake_init_coords[i].y;
+    p1_snake_x[i] = snake_init_coords[i].x;
+    p1_snake_y[i] = snake_init_coords[i].y;
   }
-  GenerateFood(p_food, snake_x, snake_y, snake.length);
+  GenerateFood(p_food, p1_snake_x, p1_snake_y, snake.length);
   matrix.drawRect(food.x, food.y, 2, 2, matrix.Color333(7, 0, 0));
 
   while(is_game){
@@ -747,62 +751,62 @@ void StartSnake() {
     Serial.print("dir : ");
     Serial.print(button_names[snake.cur_dir]);
     Serial.print(" ");
-    Serial.print(snake_x[0], DEC);
+    Serial.print(p1_snake_x[0], DEC);
     Serial.print(" ");
-    Serial.println(snake_y[0], DEC);
+    Serial.println(p1_snake_y[0], DEC);
     
     cur_time = millis();
     if(cur_time - prev_time >= SNAKE_DELAY){
-      matrix.drawRect(snake_x[snake.length - 1], snake_y[snake.length - 1], 2, 2, matrix.Color333(0, 0, 0));
-      if(!CheckCollision(snake_x, snake_y, p_snake)){
-        MoveSnake(snake_x, snake_y, p_snake);
-        snake_x[0] += (2*dx[snake.cur_dir-1]);
-        snake_y[0] += (2*dy[snake.cur_dir-1]);
-        EatFruit(snake_x, snake_y, p_snake, p_food);
+      matrix.drawRect(p1_snake_x[snake.length - 1], p1_snake_y[snake.length - 1], 2, 2, matrix.Color333(0, 0, 0));
+      if(!CheckCollision(p1_snake_x, p1_snake_y, p_snake)){
+        MoveSnake(p1_snake_x, p1_snake_y, p_snake);
+        p1_snake_x[0] += (2*dx[snake.cur_dir-1]);
+        p1_snake_y[0] += (2*dy[snake.cur_dir-1]);
+        EatFruit(p1_snake_x, p1_snake_y, p_snake, p_food);
       }
       snake.prev_dir = snake.cur_dir;
       prev_time = cur_time;
     }
-    if(CheckCollision(snake_x, snake_y, p_snake)){
+    if(CheckCollision(p1_snake_x, p1_snake_y, p_snake)){
       StopBGM();
       PlaySoundEffect(3, true);
       for (int i = 1; i <= snake.length; i++) {
-        matrix.drawRect(snake_x[i], snake_y[i], 2, 2, matrix.Color333(7, 0, 0)); 
+        matrix.drawRect(p1_snake_x[i], p1_snake_y[i], 2, 2, matrix.Color333(7, 0, 0)); 
       }
       delay(3000);
       break;
     }
     else{
-      DrawSnake(snake_x, snake_y, p_snake);
+      DrawSnake(p1_snake_x, p1_snake_y, p_snake);
     }
   }
 };
 
-void MoveSnake(char* snake_x, char* snake_y, Snake* snake) {
+void MoveSnake(char* p1_snake_x, char* p1_snake_y, Snake* snake) {
   for (int i = snake->length; i > 0; i--) {
-    snake_x[i] = snake_x[i - 1];
-    snake_y[i] = snake_y[i - 1];
+    p1_snake_x[i] = p1_snake_x[i - 1];
+    p1_snake_y[i] = p1_snake_y[i - 1];
   }
 }
 
-void DrawSnake(char* snake_x, char* snake_y, Snake* snake){
+void DrawSnake(char* p1_snake_x, char* p1_snake_y, Snake* snake){
   int length = snake->length;
   for (int i = 0; i < length; i++) {
     Serial.print("length : ");
     Serial.println(length);
-    matrix.drawRect(snake_x[i], snake_y[i], 2, 2, (i == 0) ? matrix.Color333(7, 7, 0) : matrix.Color333(0, 7, 0)); 
+    matrix.drawRect(p1_snake_x[i], p1_snake_y[i], 2, 2, (i == 0) ? matrix.Color333(7, 7, 0) : matrix.Color333(0, 7, 0)); 
   }
 }; 
 
-bool CheckCollision(char* snake_x, char* snake_y, Snake* snake){
-  Coord head = {snake_x[0], snake_y[0]};
+bool CheckCollision(char* p1_snake_x, char* p1_snake_y, Snake* snake){
+  Coord head = {p1_snake_x[0], p1_snake_y[0]};
   int length = snake->length;
   if( head.x < EDGE || head.x >= MAT_C-1-EDGE || head.y < EDGE || head.y >= MAT_R-1-EDGE){
     return true;
   };
 
   for(int i=1;i<length;i++){
-    if(head.x == snake_x[i] && head.y == snake_y[i]){
+    if(head.x == p1_snake_x[i] && head.y == p1_snake_y[i]){
       return true;
     }
   }
@@ -811,7 +815,7 @@ bool CheckCollision(char* snake_x, char* snake_y, Snake* snake){
 bool CheckOpposite(int prev, int cur){
   return ((abs(prev-cur) == 2) && !(prev == NONE || cur == NONE));
 };
-void GenerateFood(Coord* food, char* snake_x, char* snake_y, int snake_length) {
+void GenerateFood(Coord* food, char* p1_snake_x, char* p1_snake_y, int snake_length) {
   while (true) {
     food->x = 2 * (1+random(31));
     food->y = 2 * (1+random(15));
@@ -819,7 +823,7 @@ void GenerateFood(Coord* food, char* snake_x, char* snake_y, int snake_length) {
     // 스네이크와 겹치는지 확인
     bool overlap = false;
     for (int i = 0; i < snake_length; i++) {
-      if (food->x == snake_x[i] && food->y == snake_y[i]) {
+      if (food->x == p1_snake_x[i] && food->y == p1_snake_y[i]) {
         overlap = true;
         break;
       }
@@ -831,18 +835,18 @@ void GenerateFood(Coord* food, char* snake_x, char* snake_y, int snake_length) {
   }
 }
 
-void EatFruit(char* snake_x, char* snake_y, Snake* snake, Coord* food) {
-  if (food->x == snake_x[0] && food->y == snake_y[0]) {
+void EatFruit(char* p1_snake_x, char* p1_snake_y, Snake* snake, Coord* food) {
+  if (food->x == p1_snake_x[0] && food->y == p1_snake_y[0]) {
     // 과일을 먹었을 때의 처리
     matrix.drawRect(food->x, food->y, 2, 2, matrix.Color333(0, 0, 0));
     snake->length++;
 
     // 스네이크의 길이가 증가했으므로 새로운 과일을 생성
-    GenerateFood(food, snake_x, snake_y, snake->length);
+    GenerateFood(food, p1_snake_x, p1_snake_y, snake->length);
 
     // 과일과 스네이크를 화면에 그림
     matrix.drawRect(food->x, food->y, 2, 2, matrix.Color333(7, 0, 0));
-    matrix.drawRect(snake_x[0], snake_y[0], 2, 2, matrix.Color333(7, 7, 0));
+    matrix.drawRect(p1_snake_x[0], p1_snake_y[0], 2, 2, matrix.Color333(7, 7, 0));
   }
 }
 
@@ -859,10 +863,10 @@ void StartSnakeMulti() {
     {6,14}
   };
   Coord P2_snake_init_coords[4] = {
-    {51,14},
-    {53,14},
-    {55,14},
-    {57,14}
+    {50,14},
+    {52,14},
+    {54,14},
+    {56,14}
   };
   Coord food = {10,10};
   Coord p1_head;
@@ -877,15 +881,15 @@ void StartSnakeMulti() {
   bool* p_is_food = &is_food;
 
   for(int i=0;i<snake.length;i++){
-    snake_x[i] = P1_snake_init_coords[i].x;
-    snake_y[i] = P1_snake_init_coords[i].y;
+    p1_snake_x[i] = P1_snake_init_coords[i].x;
+    p1_snake_y[i] = P1_snake_init_coords[i].y;
   }
   for(int i=0;i<P2snake.length;i++){
-    P2snake_x[i] = P2_snake_init_coords[i].x;
-    P2snake_y[i] = P2_snake_init_coords[i].y;
+    p2_snake_x[i] = P2_snake_init_coords[i].x;
+    p2_snake_y[i] = P2_snake_init_coords[i].y;
   }
 
-  MultiGenerateFood(p_food, snake_x, snake_y, P2snake_x, P2snake_y, snake.length, P2snake.length);
+  MultiGenerateFood(p_food, p1_snake_x, p1_snake_y, p2_snake_x, p2_snake_y, snake.length, P2snake.length);
   matrix.drawRect(food.x, food.y, 2, 2, matrix.Color333(7, 0, 0));
 
   while(is_game){
@@ -901,73 +905,81 @@ void StartSnakeMulti() {
     Serial.print("dir : ");
     Serial.print(button_names[snake.cur_dir]);
     Serial.print(" ");
-    Serial.print(snake_x[0], DEC);
+    Serial.print(p1_snake_x[0], DEC);
     Serial.print(" ");
-    Serial.println(snake_y[0], DEC);
+    Serial.println(p1_snake_y[0], DEC);
     
     cur_time = millis();
     if(cur_time - prev_time >= SNAKE_DELAY){
-      matrix.drawRect(snake_x[snake.length - 1], snake_y[snake.length - 1], 2, 2, matrix.Color333(0, 0, 0));
-      matrix.drawRect(P2snake_x[snake.length - 1], P2snake_y[snake.length - 1], 2, 2, matrix.Color333(0, 0, 0));
-      if(!MultiCheckCollision(snake_x, snake_y, P2snake_x, P2snake_y, p_snake, p_P2snake)){
-        MoveSnake(snake_x, snake_y, p_snake);
-        snake_x[0] += (2*dx[snake.cur_dir-1]);
-        snake_y[0] += (2*dy[snake.cur_dir-1]);
-        MultiEatFruit(snake_x, snake_y, P2snake_x, P2snake_y, p_snake, p_P2snake, p_food);
+      matrix.drawRect(p1_snake_x[snake.length - 1], p1_snake_y[snake.length - 1], 2, 2, matrix.Color333(0, 0, 0));
+      matrix.drawRect(p2_snake_x[snake.length - 1], p2_snake_y[snake.length - 1], 2, 2, matrix.Color333(0, 0, 0));
+      if(!MultiCheckCollision(p1_snake_x, p1_snake_y, p2_snake_x, p2_snake_y, p_snake, p_P2snake)){
+        MoveSnake(p1_snake_x, p1_snake_y, p_snake);
+        MoveSnake(p2_snake_x, p2_snake_y, p_P2snake);
+        p1_snake_x[0] += (2*dx[snake.cur_dir-1]);
+        p1_snake_y[0] += (2*dy[snake.cur_dir-1]);
+        p2_snake_x[0] += (2*dx[P2snake.cur_dir-1]);
+        p2_snake_y[0] += (2*dy[P2snake.cur_dir-1]);
       }
-      if(!MultiCheckCollision(P2snake_x, P2snake_y, snake_x, snake_y, p_P2snake, p_snake)){
-        MoveSnake(P2snake_x, P2snake_y, p_P2snake);
-        P2snake_x[0] += (2*dx[P2snake.cur_dir-1]);
-        P2snake_y[0] += (2*dy[P2snake.cur_dir-1]);
-        MultiEatFruit(P2snake_x, P2snake_y, snake_x, snake_y, p_P2snake, p_snake, p_food);
-      }
+      MultiEatFruit(p2_snake_x, p2_snake_y, p1_snake_x, p1_snake_y, p_P2snake, p_snake, p_food);
       snake.prev_dir = snake.cur_dir;
       P2snake.prev_dir = P2snake.cur_dir;
       prev_time = cur_time;
     }
-    if(MultiCheckCollision(snake_x, snake_y, P2snake_x, P2snake_y, p_snake, p_P2snake)){
-      for (int i = 1; i <= snake.length; i++) {
-        matrix.drawRect(snake_x[i], snake_y[i], 2, 2, matrix.Color333(7, 0, 0)); 
-      }
-      break;
-    }
-    if(MultiCheckCollision(P2snake_x, P2snake_y, snake_x, snake_y, p_P2snake, p_snake)){
+    if(MultiCheckCollision(p2_snake_x, p2_snake_y, p1_snake_x, p1_snake_y, p_P2snake, p_snake)){
       for (int i = 1; i <= P2snake.length; i++) {
-        matrix.drawRect(P2snake_x[i], P2snake_y[i], 2, 2, matrix.Color333(7, 0, 0)); 
+        matrix.drawRect(p2_snake_x[i], p2_snake_y[i], 2, 2, matrix.Color333(7, 0, 0)); 
+      }
+      for (int i = 1; i <= snake.length; i++) {
+        matrix.drawRect(p1_snake_x[i], p1_snake_y[i], 2, 2, matrix.Color333(7, 0, 0)); 
       }
       break;
     }
     else{
-      DrawSnake(snake_x, snake_y, p_snake);
-      DrawSnake(P2snake_x, P2snake_y, p_P2snake);
+      DrawSnake(p1_snake_x, p1_snake_y, p_snake);
+      DrawSnake(p2_snake_x, p2_snake_y, p_P2snake);
     }
   }
   delay(1500);
   StopBGM();
 };
 
-bool MultiCheckCollision(char* snake_x, char* snake_y, char* othersnake_x, char* othersnake_y, Snake* snake, Snake* othersnake){
-  Coord head = {snake_x[0], snake_y[0]};
+bool MultiCheckCollision(char* p1_snake_x, char* p1_snake_y, char* otherp1_snake_x, char* otherp1_snake_y, Snake* snake, Snake* othersnake){
+  Coord P1head = {p1_snake_x[0], p1_snake_y[0]};
+  Coord P2head = {otherp1_snake_x[0], otherp1_snake_y[0]};
   int length = snake->length;
   int otherlength = othersnake->length;
-  if( head.x < EDGE || head.x >= MAT_C-1-EDGE || head.y < EDGE || head.y >= MAT_R-1-EDGE){
+  if( P1head.x < EDGE || P1head.x >= MAT_C-1-EDGE || P1head.y < EDGE || P1head.y >= MAT_R-1-EDGE){
+    return true;
+  };
+  if( P2head.x < EDGE || P2head.x >= MAT_C-1-EDGE || P2head.y < EDGE || P2head.y >= MAT_R-1-EDGE){
     return true;
   };
 
   for(int i=1;i<length;i++){
-    if(head.x == snake_x[i] && head.y == snake_y[i]){
+    if(P1head.x == p1_snake_x[i] && P1head.y == p1_snake_y[i]){
       return true;
     }
   }
   for(int i=0;i<otherlength;i++){
-    if(head.x == othersnake_x[i] && head.y == othersnake_y[i]){
+    if(P1head.x == otherp1_snake_x[i] && P1head.y == otherp1_snake_y[i]){
+      return true;
+    }
+  }
+  for(int i=1;i<otherlength;i++){
+    if(P2head.x == otherp1_snake_x[i] && P2head.y == otherp1_snake_y[i]){
+      return true;
+    }
+  }
+  for(int i=0;i<length;i++){
+    if(P2head.x == p1_snake_x[i] && P2head.y == p1_snake_y[i]){
       return true;
     }
   }
   return false;
 };
 
-void MultiGenerateFood(Coord* food, char* snake_x, char* snake_y, char* P2snake_x, char* P2snake_y, int snake_length, int P2snake_length) {
+void MultiGenerateFood(Coord* food, char* p1_snake_x, char* p1_snake_y, char* p2_snake_x, char* p2_snake_y, int snake_length, int P2snake_length) {
   while (true) {
     food->x = 2 * (1+random(30));
     food->y = 2 * (1+random(14));
@@ -975,13 +987,13 @@ void MultiGenerateFood(Coord* food, char* snake_x, char* snake_y, char* P2snake_
     // 스네이크와 겹치는지 확인
     bool overlap = false;
     for (int i = 0; i < snake_length; i++) {
-      if (food->x == snake_x[i] && food->y == snake_y[i]) {
+      if (food->x == p1_snake_x[i] && food->y == p1_snake_y[i]) {
         overlap = true;
         break;
       }
     }
     for (int i = 0; i < P2snake_length; i++) {
-      if (food->x == P2snake_x[i] && food->y == P2snake_y[i]) {
+      if (food->x == p2_snake_x[i] && food->y == p2_snake_y[i]) {
         overlap = true;
         break;
       }
@@ -993,19 +1005,30 @@ void MultiGenerateFood(Coord* food, char* snake_x, char* snake_y, char* P2snake_
   }
 }
 
-void MultiEatFruit(char* snake_x, char* snake_y, char* othersnake_x, char* othersnake_y, Snake* snake, Snake* othersnake, Coord* food) {
-  if (food->x == snake_x[0] && food->y == snake_y[0]) {
+void MultiEatFruit(char* p1_snake_x, char* p1_snake_y, char* otherp1_snake_x, char* otherp1_snake_y, Snake* snake, Snake* othersnake, Coord* food) {
+  if (food->x == p1_snake_x[0] && food->y == p1_snake_y[0]) {
     // 과일을 먹었을 때의 처리
     matrix.drawRect(food->x, food->y, 2, 2, matrix.Color333(0, 0, 0));
     snake->length++;
 
     // 스네이크의 길이가 증가했으므로 새로운 과일을 생성
-    MultiGenerateFood(food, snake_x, snake_y, othersnake_x, othersnake_y, snake->length, othersnake->length);
+    MultiGenerateFood(food, p1_snake_x, p1_snake_y, otherp1_snake_x, otherp1_snake_y, snake->length, othersnake->length);
 
     // 과일과 스네이크를 화면에 그림
     matrix.drawRect(food->x, food->y, 2, 2, matrix.Color333(7, 0, 0));
-    matrix.drawRect(snake_x[0], snake_y[0], 2, 2, matrix.Color333(7, 7, 0));
-    matrix.drawRect(P2snake_x[0], P2snake_y[0], 2, 2, matrix.Color333(7, 7, 0));
+    matrix.drawRect(p1_snake_x[0], p1_snake_y[0], 2, 2, matrix.Color333(7, 7, 0));
+  }
+  if (food->x == otherp1_snake_x[0] && food->y == otherp1_snake_y[0]) {
+    // 과일을 먹었을 때의 처리
+    matrix.drawRect(food->x, food->y, 2, 2, matrix.Color333(0, 0, 0));
+    othersnake->length++;
+
+    // 스네이크의 길이가 증가했으므로 새로운 과일을 생성
+    MultiGenerateFood(food, otherp1_snake_x, otherp1_snake_y, p1_snake_x, p1_snake_y, othersnake->length, snake->length);
+
+    // 과일과 스네이크를 화면에 그림
+    matrix.drawRect(food->x, food->y, 2, 2, matrix.Color333(7, 0, 0));
+    matrix.drawRect(otherp1_snake_x[0], otherp1_snake_y[0], 2, 2, matrix.Color333(7, 7, 0));
   }
 }
 void StartBreakOut(){

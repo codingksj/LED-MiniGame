@@ -34,6 +34,9 @@
 #define MUSIC_NUMBER 10
 #define EFFECT_NUMBER 10
 
+#define PLAYER1 1
+#define PLAYER2 2
+
 #define SNAKE_DELAY 200
 #define SNAKE_1_MAX_LENGTH 420
 #define SNAKE_2_MAX_LENGTH 300
@@ -210,7 +213,23 @@ const int snake_title[] PROGMEM = {
     611, 613, 616, 661, 662, 663, 665, 669, 671, 673, 
     675, 678, 680, 681, 682, 
 };
+const int snake_p1win[] PROGMEM = {
+    1193, 1194, 1256, 1257, 1258, 1319, 1320, 1321, 1322, 1385, 
+    1386, 1449, 1450, 1513, 1514, 1577, 1578, 1641, 1642, 1705, 
+    1706, 1767, 1768, 1769, 1770, 1771, 1772, 1831, 1832, 1833, 
+    1834, 1835, 1836, 
+};
+const int snake_p2win[] PROGMEM = {
+    1122, 1123, 1124, 1125, 1126, 1185, 1186, 1187, 1188, 1189, 
+    1190, 1191, 1248, 1249, 1250, 1254, 1255, 1256, 1312, 1313, 
+    1319, 1320, 1383, 1384, 1446, 1447, 1448, 1508, 1509, 1510, 
+    1511, 1570, 1571, 1572, 1573, 1574, 1633, 1634, 1635, 1636, 
+    1696, 1697, 1698, 1760, 1824, 1825, 1826, 1827, 1828, 1829, 
+    1830, 1831, 1832, 
+};
 const int snake_title_num = sizeof(snake_title) / sizeof(int);
+const int snake_p1win_num = sizeof(snake_p1win) / sizeof(int);
+const int snake_p2win_num = sizeof(snake_p2win) / sizeof(int);
 char p1_snake_x[SNAKE_1_MAX_LENGTH] = {0};
 char p1_snake_y[SNAKE_1_MAX_LENGTH] = {0};
 char p2_snake_x[SNAKE_2_MAX_LENGTH] = {0};
@@ -227,6 +246,7 @@ const int breakout_title[] PROGMEM = {
     672, 673, 675, 677, 679, 682, 
 };
 const int breakout_title_num = sizeof(breakout_title) / sizeof(int);
+
 bool bricks[MAT_C][MAT_R];
 int breaked_bricks[3] = {0,0,0};
 int break_count = 0;
@@ -879,6 +899,7 @@ void EatFruit(char* snake_x, char* snake_y, Snake* snake, Coord* food) {
 }
 
 
+
 void StartSnakeMulti() {
   Snake snake = {4, RIGHT, RIGHT};
   Snake* p_snake = &snake;
@@ -904,6 +925,8 @@ void StartSnakeMulti() {
   unsigned long cur_time = 0;
   int btn1 = NONE;
   int btn2 = NONE;
+  int winner = 0;
+  int* p_winner = &winner;
   bool is_food = false;
   bool is_game = true;
   bool* p_is_food = &is_food;
@@ -941,7 +964,7 @@ void StartSnakeMulti() {
     if(cur_time - prev_time >= SNAKE_DELAY){
       matrix.drawRect(p1_snake_x[snake.length - 1], p1_snake_y[snake.length - 1], 2, 2, matrix.Color333(0, 0, 0));
       matrix.drawRect(p2_snake_x[P2snake.length - 1], p2_snake_y[P2snake.length - 1], 2, 2, matrix.Color333(0, 0, 0));
-      if(!MultiCheckCollision(p1_snake_x, p1_snake_y, p2_snake_x, p2_snake_y, p_snake, p_P2snake)){
+      if(!MultiCheckCollision(p1_snake_x, p1_snake_y, p2_snake_x, p2_snake_y, p_snake, p_P2snake, p_winner)){
         MoveSnake(p1_snake_x, p1_snake_y, p_snake);
         MoveSnake(p2_snake_x, p2_snake_y, p_P2snake);
         p1_snake_x[0] += (2*dx[snake.cur_dir-1]);
@@ -954,12 +977,29 @@ void StartSnakeMulti() {
       P2snake.prev_dir = P2snake.cur_dir;
       prev_time = cur_time;
     }
-    if(MultiCheckCollision(p2_snake_x, p2_snake_y, p1_snake_x, p1_snake_y, p_P2snake, p_snake)){
+    if(MultiCheckCollision(p2_snake_x, p2_snake_y, p1_snake_x, p1_snake_y, p_P2snake, p_snake, p_winner)){
       for (int i = 1; i <= P2snake.length; i++) {
-        matrix.drawRect(p2_snake_x[i], p2_snake_y[i], 2, 2, matrix.Color333(7, 0, 0)); 
+        matrix.drawRect(p2_snake_x[i], p2_snake_y[i], 2, 2, matrix.Color333(7, 0, 0));
       }
       for (int i = 1; i <= snake.length; i++) {
-        matrix.drawRect(p1_snake_x[i], p1_snake_y[i], 2, 2, matrix.Color333(7, 0, 0)); 
+        matrix.drawRect(p1_snake_x[i], p1_snake_y[i], 2, 2, matrix.Color333(7, 0, 0));
+      }
+      PlaySoundEffect(3, true);
+      if(winner = PLAYER1){
+        for(int i=0;i<3;i++){
+          ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
+          delay(80);
+          PrintObject(snake_p1win, snake_p1win_num, 0, 0, matrix.Color333(0, 7, 0));
+          delay(500);
+        }
+      }
+      else if(winner = PLAYER2){
+        for(int i=0;i<3;i++){
+          ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
+          delay(80);
+          PrintObject(snake_p2win, snake_p2win_num, 0, 0, matrix.Color333(4, 7, 0));
+          delay(500);
+        }
       }
       break;
     }
@@ -972,35 +1012,41 @@ void StartSnakeMulti() {
   StopBGM();
 };
 
-bool MultiCheckCollision(char* snake_x, char* snake_y, char* othersnake_x, char* othersnake_y, Snake* snake, Snake* othersnake){
+bool MultiCheckCollision(char* snake_x, char* snake_y, char* othersnake_x, char* othersnake_y, Snake* snake, Snake* othersnake, int* winner){
   Coord P1head = {snake_x[0], snake_y[0]};
   Coord P2head = {othersnake_x[0], othersnake_y[0]};
   int length = snake->length;
   int otherlength = othersnake->length;
   if( P1head.x < EDGE || P1head.x >= MAT_C-1-EDGE || P1head.y < EDGE || P1head.y >= MAT_R-1-EDGE){
+    *winner = PLAYER2;
     return true;
   };
   if( P2head.x < EDGE || P2head.x >= MAT_C-1-EDGE || P2head.y < EDGE || P2head.y >= MAT_R-1-EDGE){
+    *winner = PLAYER1;
     return true;
   };
 
   for(int i=1;i<length;i++){
     if(P1head.x == snake_x[i] && P1head.y == snake_y[i]){
+      *winner = PLAYER2;
       return true;
     }
   }
   for(int i=0;i<otherlength;i++){
     if(P1head.x == othersnake_x[i] && P1head.y == othersnake_y[i]){
+      *winner = PLAYER2;
       return true;
     }
   }
   for(int i=1;i<otherlength;i++){
     if(P2head.x == othersnake_x[i] && P2head.y == othersnake_y[i]){
+      *winner = PLAYER1;
       return true;
     }
   }
   for(int i=0;i<length;i++){
     if(P2head.x == snake_x[i] && P2head.y == snake_y[i]){
+      *winner = PLAYER2;
       return true;
     }
   }
@@ -1039,7 +1085,7 @@ void MultiEatFruit(char* snake_x, char* snake_y, char* othersnake_x, char* other
     // 과일을 먹었을 때의 처리
     matrix.drawRect(food->x, food->y, 2, 2, matrix.Color333(0, 0, 0));
     snake->length++;
-
+    PlaySoundEffect(5, true);
     // 스네이크의 길이가 증가했으므로 새로운 과일을 생성
     MultiGenerateFood(food, snake_x, snake_y, othersnake_x, othersnake_y, snake->length, othersnake->length);
 
@@ -1051,7 +1097,7 @@ void MultiEatFruit(char* snake_x, char* snake_y, char* othersnake_x, char* other
     // 과일을 먹었을 때의 처리
     matrix.drawRect(food->x, food->y, 2, 2, matrix.Color333(0, 0, 0));
     othersnake->length++;
-
+    PlaySoundEffect(5, true);
     // 스네이크의 길이가 증가했으므로 새로운 과일을 생성
     MultiGenerateFood(food, othersnake_x, othersnake_y, snake_x, snake_y, othersnake->length, snake->length);
 
@@ -1067,21 +1113,26 @@ void SnakeGameOver(){
 };
 
 void PlayBreakOut(){
+  bool is_breakout_over = false;
 	char breakout_players;
 
   cursor_1 = right_arrows[0];
   cursor_2 = left_arrows[0];
 
-  PrintBreakOutMenu();
-  breakout_players = ChooseBreakOutPlayers();
-  ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
-  switch(breakout_players){
-    case SINGLE:
-      StartBreakOut();
-      break;
-    case MULTI:
-      StartBreakOut();
-      break;
+  while(!is_breakout_over){
+    PrintBreakOutMenu();
+    breakout_players = ChooseBreakOutPlayers();
+    ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
+    switch(breakout_players){
+      case SINGLE:
+        StartBreakOut();
+        break;
+      case MULTI:
+        StartBreakOut();
+        break;
+    }
+    is_breakout_over = !RetryGame();
+    ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
   }
 };
 
@@ -1181,6 +1232,7 @@ void StartBreakOut() {
 
     if (!is_breakout_game) {
       BreakoutGameOver();
+      PlaySoundEffect(3, true);
       StopBGM();
       ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
       break ;
@@ -1277,7 +1329,8 @@ void MoveBall() {
           bricks[nextX + i][ballY - 1 + j] = false;
         }
       }
-    } else {
+    } 
+    else {
       for (int i = 0; i < 2; i++) {
         for (int j = 0; j < 2; j++) {
           bricks[nextX + i][ballY - 1 + j] = false;
@@ -1286,7 +1339,8 @@ void MoveBall() {
     }
     ballSpeedX = -ballSpeedX;
     PlaySoundEffect(4, true);
-  } else if (bricks[ballX][nextY]) {
+  } 
+  else if (bricks[ballX][nextY]) {
     matrix.drawRect(ballX - 1, nextY - 1, 3, 2, matrix.Color333(0, 0, 0));
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 2; j++) {
@@ -1303,7 +1357,8 @@ void MoveBall() {
           bricks[nextX + i][nextY - 1 + j] = false;
         }
       }
-    } else {
+    } 
+    else {
       for (int i = 0; i < 2; i++) {
         for (int j = 0; j < 2; j++) {
           bricks[nextX + i][nextY - 1 + j] = false;
@@ -1376,10 +1431,10 @@ void CalcBreakOutScore() {
 
 //게임오버 출력 함수
 void BreakoutGameOver() {
-  matrix.fillScreen(0); 
-  matrix.setCursor(5, 32/ 2 - 4); 
+  InitMatrixEdge(matrix.Color333(7,0,0));
+  matrix.setCursor(5, MAT_R/ 2 - 4); 
   matrix.print("GAME OVER");
-  delay(5000);
+  delay(2000);
 }
 
 //미니게임 함수

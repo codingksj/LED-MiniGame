@@ -9,8 +9,7 @@
 //음악 관련
 #define SEC 1000UL
 #define MINUTE 60000UL
-#define MUSIC_NUMBER 5
-#define EFFECT_NUMBER 5
+#define MUSIC_NUMBER 10
 
 SoftwareSerial mp3_serial(10, 11);  // RX, TX
 SoftwareSerial dataSerial(UNO_TX, UNO_RX);
@@ -36,13 +35,8 @@ unsigned long game_music_length[MUSIC_NUMBER+1] = {
   36*SEC,
   (2*MINUTE)+2*SEC,
   (1*MINUTE)+54*SEC,
-  1*SEC
-};
-unsigned long effect_music_length[EFFECT_NUMBER+1] = {
-  0,
-  2*SEC,
-  2*SEC,
-  33*SEC
+  (2*MINUTE)+39*SEC,
+  (5*MINUTE)+43*SEC
 };
 
 bool is_play = true;
@@ -51,11 +45,10 @@ void setup() {
   Serial.begin(RATE);
   mp3_serial.begin(RATE);
   mp3.begin(mp3_serial);
+  mp3.volume(13);
 
   dataSerial.begin(RATE);
 
-  mp3.volume(16);
-  delay(100);
   for (int i = 0; i <= MUSIC_NUMBER; i++) {
     Serial.print("game_music_length[");
     Serial.print(i);
@@ -92,6 +85,7 @@ void loop() {
     Serial.print(", ");
     Serial.println(cur_interval);
     if(!is_play && data){
+      mp3.stop();
       cur_play_time = millis();  
       last_play_time = cur_play_time;
       last_interval = 0;

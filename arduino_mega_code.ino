@@ -24,7 +24,7 @@
 #define MAT_R 32 
 #define MAT_C 64
 #define EDGE 2
-#define DELAY_TIME 125
+#define DELAY_TIME 100
 #define RECT_COUNT 5
 #define COLOR_COUNT 5
 
@@ -91,6 +91,16 @@ RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, false, 64);
 Rectangle title = {10, 4, MAT_C-2*10, 9};
 Rectangle menu_1 = {15, 14, MAT_C-2*15, 7};
 Rectangle menu_2 = {15, 21, MAT_C-2*15, 7};
+Coord right_arrows[2] = {
+  {menu_1.x - 2, menu_1.y + 3},
+  {menu_2.x - 2, menu_2.y + 3}
+};
+Coord left_arrows[2] = {
+  {menu_1.x + menu_1.w + 1, menu_1.y + 3},
+  {menu_2.x + menu_2.w + 1, menu_2.y + 3}
+};
+Coord cursor_1 = right_arrows[0];
+Coord cursor_2 = left_arrows[0];
 const char str[] PROGMEM = "GAME OVER";
 const char str2[] PROGMEM = "YOUR SCORE WAS:";
 const char button_names[6][10] = {
@@ -163,15 +173,16 @@ unsigned long game_music_length[MUSIC_NUMBER+1] = {
   36*SEC,
   (2*MINUTE)+2*SEC,
   (1*MINUTE)+54*SEC,
-  (2*MINUTE)+39*SEC
+  (2*MINUTE)+39*SEC,
+  (5*MINUTE)+43*SEC
 };
 unsigned long effect_music_length[EFFECT_NUMBER+1] = {
   0,
   2*SEC,
   5*SEC,
   2*SEC,
-  1*SEC,
   0,
+  1*SEC,
 };
 
 unsigned long bgm_prev_play_time = 0;
@@ -514,12 +525,6 @@ void DrawRightArrow(int start_x, int start_y, uint16_t color){
 };
 
 int CheckP1(int btn1) {
-  Coord right_arrows[2] = {
-    {menu_1.x - 2, menu_1.y + 3},
-    {menu_2.x - 2, menu_2.y + 3}
-  };
-  static Coord cursor_1 = right_arrows[0];
-
   switch (btn1) {
     case UP:
       DrawRightArrow(right_arrows[1].x, right_arrows[1].y, matrix.Color333(0, 0, 0));
@@ -550,12 +555,6 @@ int CheckP1(int btn1) {
 };
 
 int CheckP2(int btn2) {
-  Coord left_arrows[2] = {
-    {menu_1.x + menu_1.w + 1, menu_1.y + 3},
-    {menu_2.x + menu_2.w + 1, menu_2.y + 3}
-  };
-  static Coord cursor_2 = left_arrows[0];
-
   switch (btn2) {
     case UP:
       DrawLeftArrow(left_arrows[1].x, left_arrows[1].y, matrix.Color333(0, 0, 0));
@@ -597,7 +596,8 @@ void ClearObject(const int* pixels, int pixel_num, int start_x, int start_y) {
 
 bool RetryGame() {
   ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
-  matrix.setCursor(10, 10);
+  InitMatrixEdge(matrix.Color333(0,7,7));
+  matrix.setCursor(15, 5);
   matrix.print("Retry?");
 
   while (true) {
@@ -661,6 +661,9 @@ void StopSoundEffect(){
 void PlaySnake(){
   bool is_snake_over = false;
   char snake_players;
+
+  cursor_1 = right_arrows[0];
+  cursor_2 = left_arrows[0];
 
   while(!is_snake_over){
     PrintSnakeMenu();
@@ -740,6 +743,7 @@ void StartSnake() {
   bool is_game = true;
   bool is_collide = false;
   bool* p_is_food = &is_food;
+  track_number = 5;
 
   for(int i=0;i<snake.length;i++){
     p1_snake_x[i] = snake_init_coords[i].x;
@@ -749,7 +753,7 @@ void StartSnake() {
   matrix.drawRect(food.x, food.y, 2, 2, matrix.Color333(7, 0, 0));
 
   while(is_game){
-    PlayBGM(5, true);
+    PlayBGM(track_number, true);
     btn1 = ProcessInputButton1();
     if(!(btn1 == NONE || btn1 == SELECT || CheckOpposite(btn1, snake.prev_dir))){
       snake.cur_dir = btn1;
@@ -774,6 +778,7 @@ void StartSnake() {
       prev_time = cur_time;
     }
     if(CheckCollision(p1_snake_x, p1_snake_y, p_snake)){
+      InitMatrixEdge(matrix.Color333(7,0,0));
       StopBGM();
       PlaySoundEffect(3, true);
       for (int i = 1; i <= snake.length; i++) {
@@ -854,6 +859,7 @@ void GenerateFood(Coord* food, char* snake_x, char* snake_y, int snake_length) {
 void EatFruit(char* snake_x, char* snake_y, Snake* snake, Coord* food) {
   if (food->x == snake_x[0] && food->y == snake_y[0]) {
     // 과일을 먹었을 때의 처리
+    PlaySoundEffect(5, true);
     matrix.drawRect(food->x, food->y, 2, 2, matrix.Color333(0, 0, 0));
     snake->length++;
 
@@ -1051,6 +1057,10 @@ void MultiEatFruit(char* snake_x, char* snake_y, char* othersnake_x, char* other
 
 void PlayBreakOut(){
 	char breakout_players;
+
+  cursor_1 = right_arrows[0];
+  cursor_2 = left_arrows[0];
+
   PrintBreakOutMenu();
   breakout_players = ChooseBreakOutPlayers();
   ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
@@ -1127,22 +1137,24 @@ void StartBreakOut() {
 
   //점수 상태
   breakout_score = 0;
-
+  track_number = 6;
   is_breakout_game = true ;
+
   InitBreakOut();
   DrawEdge();
   DrawBricks();
-//PlayBackGroundMusicMP3(); 음악 정해서 ()안에 넣기
   DrawBall();
   DrawPaddle();
-//텍스트 세팅
+
   matrix.setTextSize(1);
   matrix.setTextColor(matrix.Color333(7, 7, 7));
   while (true) {
+    PlayBGM(track_number, true);
     cur_ball_move = cur_paddle_move = millis();
     if(cur_ball_move - prev_ball_move >= BALL_DELAY){
       MoveBall();
       DrawBall();
+      DrawEdge();
       prev_ball_move = cur_ball_move;
     }
 
@@ -1158,7 +1170,8 @@ void StartBreakOut() {
 
     if (!is_breakout_game) {
       BreakoutGameOver();
-      matrix.fillScreen(0);
+      StopBGM();
+      ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
       break ;
     }
   }
@@ -1187,6 +1200,7 @@ void InitBreakOut() {
   }
 }
 // 공을 움직이는 함수
+// 공을 움직이는 함수
 void MoveBall() {
   // 현재 위치에서 공을 지웁니다.
   bool is_paddle_L;
@@ -1206,7 +1220,7 @@ void MoveBall() {
   Serial.print(ballY);
   Serial.println();
 
-  is_paddle_L = (ballY + 1 == paddleY) && (ballX >= paddleX-2 && ballX <= paddleX);
+  is_paddle_L = (ballY + 1 == paddleY) && (ballX >= paddleX - 2 && ballX <= paddleX);
   is_paddle_M = (ballY + 1 == paddleY) && (ballX == paddleX);
   is_paddle_R = (ballY + 1 == paddleY) && (ballX >= paddleX && ballX <= paddleX + 2);
   is_floor = (ballY > MAT_R - EDGE);
@@ -1240,33 +1254,54 @@ void MoveBall() {
     ballSpeedY = -ballSpeedY;
   }
 
-// 벽돌과의 충돌 검사
-  if (bricks[ballX+ballSpeedX][ballY]) {
-    if( ballX != 1 && ballX != 62 && ballY != 1) {
-    matrix.drawPixel(ballX+ballSpeedX, ballY, matrix.Color333(0, 0, 0));
+  // 벽돌과의 충돌 검사
+  int nextX = ballX + ballSpeedX;
+  int nextY = ballY + ballSpeedY;
+
+  if (bricks[nextX][ballY]) {
+    matrix.drawRect(nextX + ballSpeedX, ballY - 1, 2, 2, matrix.Color333(0, 0, 0));
+    if (ballSpeedX < 0) {
+      for (int i = 0; i > -2; i--) {
+        for (int j = 0; j < 2; j++) {
+          bricks[nextX + i][ballY - 1 + j] = false;
+        }
+      }
+    } else {
+      for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+          bricks[nextX + i][ballY - 1 + j] = false;
+        }
+      }
     }
-    ballSpeedX = -ballSpeedX ;
-    PlaySoundEffect(4,true);
-  }
-  if (bricks[ballX][ballY+ballSpeedY]) {
-    if( ballX != 1 && ballX != 62 && ballY != 1) {
-    matrix.drawPixel(ballX, ballY+ballSpeedY, matrix.Color333(0, 0, 0));
-    }    
-    ballSpeedY = -ballSpeedY ;
-    PlaySoundEffect(4,true);
-  }
-  else if (bricks[ballX+ballSpeedX][ballY] == false && bricks[ballX+ballSpeedX][ballY+ballSpeedY]) {
-    if( ballX != 1 && ballX != 62 && ballY != 1) {
-    matrix.drawPixel(ballX+ballSpeedX, ballY+ballSpeedY, matrix.Color333(0, 0, 0));
+    ballSpeedX = -ballSpeedX;
+    PlaySoundEffect(4, true);
+  } else if (bricks[ballX][nextY]) {
+    matrix.drawRect(ballX - 1, nextY - 1, 3, 2, matrix.Color333(0, 0, 0));
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 2; j++) {
+        bricks[ballX - 1 + i][nextY - 1 + j] = false;
+      }
     }
-    ballSpeedY = -ballSpeedY ;
-    ballSpeedX = -ballSpeedX ;
-    PlaySoundEffect(4,true);
-  }
-  if ( ballY + 1 == paddleY ) {
-    if ( paddleX - 1 < ballX && ballX < paddleX + 4) {
-      ballSpeedY = -ballSpeedY ;
+    ballSpeedY = -ballSpeedY;
+    PlaySoundEffect(4, true);
+  } else if (bricks[nextX][nextY]) {
+    matrix.drawRect(nextX + ballSpeedX, nextY - 1, 2, 2, matrix.Color333(0, 0, 0));
+    if (ballSpeedX < 0) {
+      for (int i = 0; i > -2; i--) {
+        for (int j = 0; j < 2; j++) {
+          bricks[nextX + i][nextY - 1 + j] = false;
+        }
+      }
+    } else {
+      for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+          bricks[nextX + i][nextY - 1 + j] = false;
+        }
+      }
     }
+    ballSpeedY = -ballSpeedY;
+    ballSpeedX = -ballSpeedX;
+    PlaySoundEffect(4, true);
   }
 }
 

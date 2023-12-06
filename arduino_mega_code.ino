@@ -136,9 +136,26 @@ const int menu_2_pixels[] PROGMEM = {
   1641, 1685, 1686, 1687, 1690, 1693, 1695, 1696, 1697,
   1699, 1701, 1703, 1706
 };
+const int single_text[] PROGMEM = {
+    980, 981, 982, 984, 986, 990, 993, 994, 995, 997, 
+    1001, 1002, 1003, 1044, 1048, 1050, 1051, 1054, 1056, 1061, 
+    1065, 1108, 1109, 1110, 1112, 1114, 1116, 1118, 1120, 1122, 
+    1123, 1125, 1129, 1130, 1131, 1174, 1176, 1178, 1181, 1182, 
+    1184, 1187, 1189, 1193, 1236, 1237, 1238, 1240, 1242, 1246, 
+    1249, 1250, 1251, 1253, 1254, 1255, 1257, 1258, 1259, 
+};
+const int multi_text[] PROGMEM = {
+    1430, 1434, 1436, 1439, 1441, 1445, 1446, 1447, 1449, 1494, 
+    1495, 1497, 1498, 1500, 1503, 1505, 1510, 1513, 1558, 1560, 
+    1562, 1564, 1567, 1569, 1574, 1577, 1622, 1626, 1628, 1631, 
+    1633, 1638, 1641, 1686, 1690, 1693, 1694, 1697, 1698, 1699, 
+    1702, 1705, 
+};
 int title_pixels_num = sizeof(title_pixels) / sizeof(int);
 int menu_1_pixels_num = sizeof(menu_1_pixels) / sizeof(int);
 int menu_2_pixels_num = sizeof(menu_2_pixels) / sizeof(int);
+int single_text_num = sizeof(single_text) / sizeof(int);
+int multi_text_num = sizeof(multi_text) / sizeof(int);
 
 unsigned long game_music_length[MUSIC_NUMBER+1] = {
   0,
@@ -171,11 +188,30 @@ int track_number = 1;
 int se_number = 1;
 bool is_p1_selected = false;
 bool is_p2_selected = false;
+
+const int snake_title[] PROGMEM = {
+    405, 406, 407, 409, 413, 416, 419, 422, 424, 425, 
+    426, 469, 473, 474, 477, 479, 481, 483, 485, 488, 
+    533, 534, 535, 537, 539, 541, 543, 544, 545, 547, 
+    548, 552, 553, 554, 599, 601, 604, 605, 607, 609, 
+    611, 613, 616, 661, 662, 663, 665, 669, 671, 673, 
+    675, 678, 680, 681, 682, 
+};
+const int snake_title_num = sizeof(snake_title) / sizeof(int);
 char p1_snake_x[SNAKE_1_MAX_LENGTH] = {0};
 char p1_snake_y[SNAKE_1_MAX_LENGTH] = {0};
 char p2_snake_x[SNAKE_2_MAX_LENGTH] = {0};
 char p2_snake_y[SNAKE_2_MAX_LENGTH] = {0};
 
+const int breakout_title[] PROGMEM = {
+    405, 406, 407, 410, 411, 412, 415, 416, 417, 420, 
+    423, 426, 469, 472, 474, 477, 479, 483, 485, 487, 
+    489, 533, 534, 535, 538, 539, 540, 543, 544, 545, 
+    547, 548, 549, 551, 552, 597, 600, 602, 605, 607, 
+    611, 613, 615, 617, 661, 662, 663, 666, 669, 671, 
+    672, 673, 675, 677, 679, 682, 
+};
+const int breakout_title_num = sizeof(breakout_title) / sizeof(int);
 bool bricks[MAT_C][MAT_R];
 int breaked_bricks[3] = {0,0,0};
 int break_count = 0;
@@ -213,6 +249,8 @@ void StopBGM();
 void PlaySoundEffect(const int se_number, bool is_loop);
 void StopSoundEffect();
 
+void PlaySnake();
+void PrintSnakeMenu();
 int ChooseSnakePlayers();
 void StartSnake();
 void MoveSnake(char* p1_snake_x, char* p1_snake_y, Snake* snake); 
@@ -226,6 +264,9 @@ bool MultiCheckCollision(char* snake_x, char* snake_y, char* othersnake_x, char*
 void MultiGenerateFood(Coord* food, char* snake_x, char* snake_y, char* othersnake_x, char* othersnake_y, int snake_length, int P2snake_length);
 void MultiEatFruit(char* snake_x, char* snake_y, char* othersnake_x, char* othersnake_y, Snake* snake, Snake* othersnake, Coord* food);
 
+void PlayBreakOut();
+void PrintBreakOutMenu();
+int ChooseBreakOutPlayers();
 void StartBreakOut();
 void InitBreakOut();
 void MoveBall();
@@ -256,8 +297,6 @@ void setup() {
   matrix.setTextSize(1);
   matrix.fillScreen(matrix.Color333(0, 0, 0));
   InitMatrixEdge(matrix.Color333(0, 0, 7));
-
-  randomSeed(analogRead(A15));
 }
 
 
@@ -272,19 +311,10 @@ void loop() {
   ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
   switch(option){
     case SNAKE:
-      snake_players = ChooseSnakePlayers();
-      ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
-      switch(snake_players){
-        case SINGLE:
-          StartSnake();
-          break;
-        case MULTI:
-          StartSnakeMulti();
-          break;
-      }
+      PlaySnake();
       break;
     case BREAK:
-      StartBreakOut();
+      PlayBreakOut();
       break;
     default:
       break;
@@ -428,6 +458,7 @@ void PlayWaitAnimation() {
   PlaySoundEffect(1, true);
   StopBGM();
 };
+
 void PrintMenu(){
   matrix.drawRect(title.x, title.y, title.w, title.h, matrix.Color333(3,0,0));
   matrix.drawRect(menu_1.x, menu_1.y, menu_1.w, menu_1.h, matrix.Color333(1,3,0));
@@ -608,6 +639,30 @@ void StopSoundEffect(){
   mp3.stop();
 };
 
+void PlaySnake(){
+  char snake_players;
+    PrintSnakeMenu();
+    snake_players = ChooseSnakePlayers();
+    ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
+    switch(snake_players){
+      case SINGLE:
+        StartSnake();
+        break;
+      case MULTI:
+        StartSnakeMulti();
+        break;
+    }
+};
+
+void PrintSnakeMenu(){
+  matrix.drawRect(title.x, title.y, title.w, title.h, matrix.Color333(3,0,0));
+  matrix.drawRect(menu_1.x, menu_1.y, menu_1.w, menu_1.h, matrix.Color333(1,3,0));
+  matrix.drawRect(menu_2.x, menu_2.y, menu_2.w, menu_2.h, matrix.Color333(0,7,0));
+  PrintObject(snake_title, snake_title_num, 0, 0, matrix.Color333(3,0,0));
+  PrintObject(single_text, single_text_num, 0, 0, matrix.Color333(1,3,0));
+  PrintObject(multi_text, multi_text_num, 0, 0, matrix.Color333(0,7,0));
+};
+
 int ChooseSnakePlayers(){   //2 single,  3 multi
   int game_number = 0;
   int btn1 = NONE;
@@ -742,9 +797,10 @@ bool CheckOpposite(int prev, int cur){
   return ((abs(prev-cur) == 2) && !(prev == NONE || cur == NONE));
 };
 void GenerateFood(Coord* food, char* snake_x, char* snake_y, int snake_length) {
+  randomSeed(analogRead(A15));
   while (true) {
-    food->x = 2 * (1+random(31));
-    food->y = 2 * (1+random(15));
+    food->x = 2 * (1+random(30));
+    food->y = 2 * (1+random(14));
 
     // 스네이크와 겹치는지 확인
     bool overlap = false;
@@ -906,6 +962,7 @@ bool MultiCheckCollision(char* snake_x, char* snake_y, char* othersnake_x, char*
 };
 
 void MultiGenerateFood(Coord* food, char* snake_x, char* snake_y, char* othersnake_x, char* othersnake_y, int snake_length, int P2snake_length) {
+  randomSeed(analogRead(A15));
   while (true) {
     food->x = 2 * (1+random(30));
     food->y = 2 * (1+random(14));
@@ -957,6 +1014,62 @@ void MultiEatFruit(char* snake_x, char* snake_y, char* othersnake_x, char* other
     matrix.drawRect(othersnake_x[0], othersnake_y[0], 2, 2, matrix.Color333(7, 7, 0));
   }
 }
+
+void PlayBreakOut(){
+	char breakout_players;
+  PrintBreakOutMenu();
+  breakout_players = ChooseBreakOutPlayers();
+  ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
+  switch(breakout_players){
+    case SINGLE:
+      StartBreakOut();
+      break;
+    case MULTI:
+      StartBreakOut();
+      break;
+  }
+};
+
+void PrintBreakOutMenu(){
+  matrix.drawRect(title.x, title.y, title.w, title.h, matrix.Color333(3,0,0));
+  matrix.drawRect(menu_1.x, menu_1.y, menu_1.w, menu_1.h, matrix.Color333(1,3,0));
+  matrix.drawRect(menu_2.x, menu_2.y, menu_2.w, menu_2.h, matrix.Color333(0,7,0));
+  PrintObject(breakout_title, breakout_title_num, 0, 0, matrix.Color333(3,0,0));
+  PrintObject(single_text, single_text_num, 0, 0, matrix.Color333(1,3,0));
+  PrintObject(multi_text, multi_text_num, 0, 0, matrix.Color333(0,7,0));
+};
+
+int ChooseBreakOutPlayers(){
+  int game_number = 0;
+  int btn1 = NONE;
+  int btn2 = NONE;
+  int option1 = 0;
+  int option2 = 0;
+  int data;
+
+  track_number = 1;
+  is_p1_selected = is_p2_selected = false;
+
+  while (true) {
+    btn1 = ProcessInputButton1();
+    btn2 = ProcessInputButton2();
+    PlayBGM(track_number, false);
+    option1 = CheckP1(btn1);
+    option2 = CheckP2(btn2);
+    if(option1 == option2 && option1>0){
+      break;
+    }
+  }
+  game_number = option1;
+  Serial.print("you choose : ");
+  Serial.println(game_number);
+  PlaySoundEffect(1, true);
+  delay(1500);
+  StopSoundEffect();
+  StopBGM();
+
+  return game_number;
+};
 
 void StartBreakOut() {
   unsigned int prev_ball_move = 0;

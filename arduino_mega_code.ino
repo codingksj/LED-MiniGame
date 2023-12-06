@@ -37,10 +37,12 @@
 #define SNAKE_DELAY 200
 #define SNAKE_1_MAX_LENGTH 420
 #define SNAKE_2_MAX_LENGTH 300
+#define SNAKE_MAX_SCORE 420
 
 #define BALL_DELAY 200
 #define PADDLE_DELAY 50
 #define BRICK_NUM 20
+#define BREAKOUT_MAX_SCORE 72
 
 SoftwareSerial mega_serial(MEGA_TX, MEGA_RX); 
 SoftwareSerial mp3_serial(6, 7); 
@@ -213,6 +215,8 @@ char p1_snake_x[SNAKE_1_MAX_LENGTH] = {0};
 char p1_snake_y[SNAKE_1_MAX_LENGTH] = {0};
 char p2_snake_x[SNAKE_2_MAX_LENGTH] = {0};
 char p2_snake_y[SNAKE_2_MAX_LENGTH] = {0};
+bool snake_score_table[SNAKE_MAX_SCORE];
+int snake_score = 0;
 
 const int breakout_title[] PROGMEM = {
     405, 406, 407, 410, 411, 412, 415, 416, 417, 420, 
@@ -233,10 +237,11 @@ int ballSpeedY = 1;
 int paddleX = 32;
 int paddleY = 31;
 int paddleSpeedX = -1;
-int breakout_score = 0;
 bool is_breakout_game = true ;
 int specialBrickX = 1 + random(62) ;
 int specialBrickY = 1 + random(10) ;
+int breakout_score = 0;
+bool breakout_score_table[BREAKOUT_MAX_SCORE];
 
 //---------- 함수 ----------
 int ProcessInputButton1();
@@ -276,6 +281,7 @@ void StartSnakeMulti();
 bool MultiCheckCollision(char* snake_x, char* snake_y, char* othersnake_x, char* othersnake_y, Snake* snake, Snake* othersnake);
 void MultiGenerateFood(Coord* food, char* snake_x, char* snake_y, char* othersnake_x, char* othersnake_y, int snake_length, int P2snake_length);
 void MultiEatFruit(char* snake_x, char* snake_y, char* othersnake_x, char* othersnake_y, Snake* snake, Snake* othersnake, Coord* food);
+void SnakeGameOver(int score);
 
 void PlayBreakOut();
 void PrintBreakOutMenu();
@@ -1054,6 +1060,11 @@ void MultiEatFruit(char* snake_x, char* snake_y, char* othersnake_x, char* other
     matrix.drawRect(othersnake_x[0], othersnake_y[0], 2, 2, matrix.Color333(7, 7, 0));
   }
 }
+
+void SnakeGameOver(){
+
+
+};
 
 void PlayBreakOut(){
 	char breakout_players;

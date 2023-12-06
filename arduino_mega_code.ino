@@ -287,7 +287,7 @@ void setup() {
   mega_serial.begin(BAUD_RATE);
   mp3_serial.begin(BAUD_RATE);
   mp3.begin(mp3_serial);
-  mp3.volume(16);
+  mp3.volume(10);
 
   pinMode(BTN_SRC_1, INPUT);
   pinMode(BTN_SRC_2, INPUT);
@@ -319,6 +319,7 @@ void loop() {
     default:
       break;
   }
+
   ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
 }
 
@@ -1077,8 +1078,8 @@ void StartBreakOut() {
   unsigned int prev_paddle_move = 0;
   unsigned int cur_paddle_move = 0;
 
-  ballX = 32;
-  ballY = 24;
+  ballX = 24;
+  ballY = 22;
 
   // 공의 이동 방향
   ballSpeedX = 1;
@@ -1101,25 +1102,27 @@ void StartBreakOut() {
 //PlayBackGroundMusicMP3(); 음악 정해서 ()안에 넣기
   DrawBall();
   DrawPaddle();
-  DrawBricks();
 //텍스트 세팅
   matrix.setTextSize(1);
   matrix.setTextColor(matrix.Color333(7, 7, 7));
   while (true) {
-    cur_ball_move = millis();
+    cur_ball_move = cur_paddle_move = millis();
     if(cur_ball_move - prev_ball_move >= BALL_DELAY){
       MoveBall();
       DrawBall();
       prev_ball_move = cur_ball_move;
     }
-    cur_paddle_move = millis();
-    if(cur_paddle_move - prev_paddle_move >= PADDLE_DELAY){
-      Serial.print("paddle : ");
-      Serial.println(paddleX);
-      MovePaddle();
-      DrawPaddle(); 
-      prev_paddle_move = cur_paddle_move;
-    }
+
+    Serial.print("paddle : ");
+    Serial.println(paddleX);
+    /*Serial.print("time : ");
+    Serial.print(prev_paddle_move);
+    Serial.print(",");
+    Serial.println(cur_paddle_move);*/
+    MovePaddle();
+    DrawPaddle(); 
+    prev_paddle_move = cur_paddle_move;
+
     if (!is_breakout_game) {
       BreakoutGameOver();
       matrix.fillScreen(0);
@@ -1169,7 +1172,7 @@ void MoveBall() {
   Serial.println();
 
   is_paddle = (ballY + 1 == paddleY) && (ballX >= paddleX-1 && ballX <= paddleX + 2);
-  is_floor = (ballY >= MAT_R - EDGE);
+  is_floor = (ballY > MAT_R - EDGE);
   is_ceil = (ballY <= EDGE);
   is_side = (ballX <= EDGE) || (ballX >= MAT_C - EDGE - 1);
 
@@ -1244,12 +1247,12 @@ void DrawPaddle() {
 //패들 움직이는 함수
 void MovePaddle() {
   int btn = ProcessInputButton1();
-  if ( paddleX != EDGE && btn == LEFT) {
+  if ( paddleX != EDGE + 1 && btn == LEFT) {
     Serial.println("left");
     matrix.drawLine(paddleX-1, paddleY, paddleX+2, paddleY,  matrix.Color333(0, 0, 0));
     paddleX+=paddleSpeedX;
   }
-  else if ( paddleX != MAT_C-EDGE-1 && btn == RIGHT) {
+  else if ( paddleX != MAT_C-EDGE-3 && btn == RIGHT) {
     Serial.println("right");
     matrix.drawLine(paddleX-1, paddleY, paddleX+2, paddleY,  matrix.Color333(0, 0, 0));
     paddleX-=paddleSpeedX;
@@ -1258,12 +1261,14 @@ void MovePaddle() {
 
 //모서리 벽 그리기 함수
 void DrawEdge() {
-  matrix.drawLine(0,0,0,31,matrix.Color333(0,0,7));
-  matrix.drawLine(1,0,62,0,matrix.Color333(0,0,7));
-  matrix.drawLine(63,0,63,31,matrix.Color333(0,0,7));
-  matrix.drawLine(0,0,0,30,matrix.Color333(0,0,7));
-  matrix.drawLine(1,0,61,0,matrix.Color333(0,0,7));
-  matrix.drawLine(62,0,62,31,matrix.Color333(0,0,7));
+  matrix.drawLine(0,0,0,31,matrix.Color333(0,7,0));
+  matrix.drawLine(2,0,61,0,matrix.Color333(0,7,0));
+  matrix.drawLine(63,0,63,31,matrix.Color333(0,7,0));
+  matrix.drawLine(1,0,1,31,matrix.Color333(0,7,0));
+  matrix.drawLine(2,1,61,1,matrix.Color333(0,7,0));
+  matrix.drawLine(62,0,62,31,matrix.Color333(0,7,0));
+  matrix.drawLine(2,31,61,31,matrix.Color333(0,0,0));
+  matrix.drawLine(2,30,61,30,matrix.Color333(0,0,0));
 }
 
 //점수 계산 함수

@@ -1053,7 +1053,7 @@ void StartSnakeMulti() {
       P2snake.prev_dir = P2snake.cur_dir;
       prev_time = cur_time;
     }
-    if(MultiCheckCollision(p2_snake_x, p2_snake_y, p1_snake_x, p1_snake_y, p_P2snake, p_snake, p_winner)){
+    if(MultiCheckCollision(p1_snake_x, p1_snake_y, p2_snake_x, p2_snake_y, p_snake, p_P2snake, p_winner)){
       for (int i = 1; i <= P2snake.length; i++) {
         matrix.drawRect(p2_snake_x[i], p2_snake_y[i], 2, 2, matrix.Color333(7, 0, 0));
       }
@@ -1061,7 +1061,7 @@ void StartSnakeMulti() {
         matrix.drawRect(p1_snake_x[i], p1_snake_y[i], 2, 2, matrix.Color333(7, 0, 0));
       }
       PlaySoundEffect(3, true);
-      if(winner = PLAYER1){
+      if(winner == PLAYER1){
         for(int i=0;i<3;i++){
           ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
           delay(80);
@@ -1069,13 +1069,16 @@ void StartSnakeMulti() {
           delay(500);
         }
       }
-      else if(winner = PLAYER2){
+      else if(winner == PLAYER2){
         for(int i=0;i<3;i++){
           ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
           delay(80);
           PrintObject(snake_p2win, snake_p2win_num, 0, 0, matrix.Color333(4, 7, 0));
           delay(500);
         }
+      }
+      else{
+
       }
       break;
     }
@@ -1520,6 +1523,7 @@ void CalcBreakOutScore() {
 //게임오버 출력 함수
 void BreakoutGameOver() {
   InitMatrixEdge(matrix.Color333(7,0,0));
+  ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
   matrix.setCursor(5, MAT_R/ 2 - 4); 
   matrix.print("GAME OVER");
   delay(2000);
@@ -1684,6 +1688,7 @@ void InitBreakOutM() {
 }
 
 // 공을 움직이는 함수1(멀티)
+// 공을 움직이는 함수1(멀티)
 void MoveBallM1() {
   // 현재 위치에서 공을 지웁니다.
   bool is_M1paddle_L;
@@ -1708,7 +1713,7 @@ void MoveBallM1() {
   is_M1paddle_R = (M1ballY + 1 == M1paddleY) && (M1ballX >= M1paddleX && M1ballX <= M1paddleX + 1);
   is_M1floor = (M1ballY > MAT_R - EDGE);
   is_M1ceil = (M1ballY <= EDGE);
-  is_M1side = (M1ballX <= EDGE) || (M1ballX >= 31);
+  is_M1side = (M1ballX <= EDGE) || (M1ballX >= 30);
   if (is_M1floor) {
     is_breakout_gameM1 = false;
     return;
@@ -1811,7 +1816,7 @@ void MoveBallM2() {
   is_M2paddle_R = (M2ballY + 1 == M2paddleY) && (M2ballX >= M2paddleX && M2ballX <= M2paddleX + 1);
   is_M2floor = (M2ballY > MAT_R - EDGE);
   is_M2ceil = (M2ballY <= EDGE);
-  is_M2side = (M2ballX <= 32) || (M2ballX >= MAT_C - EDGE - 1);
+  is_M2side = (M2ballX <= 33) || (M2ballX >= MAT_C - EDGE - 1);
   if (is_M2floor) {
     is_breakout_gameM2 = false;
     return;
@@ -1888,7 +1893,6 @@ void MoveBallM2() {
     PlaySoundEffect(4, true);
   }
 }
-
 
 
 //패들 움직이는 함수1(멀티)

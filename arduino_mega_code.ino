@@ -352,10 +352,10 @@ void MovePaddle() ;
 void DrawEdge();
 void CalcBreakOutScore();
 void BreakoutGameOver();
-void BreakoutMinigame();
 void DisplayBreakoutScore();
 void StartBreakOutMulti();
-void DrawEdgeM();
+void DrawEdgeM1();
+void DrawEdgeM2();
 void DrawBricksM();
 void DrawBallM1();
 void DrawBallM2();
@@ -368,7 +368,9 @@ void MovePaddleM1();
 void MovePaddleM2();
 void CalcBreakOutScoreM1();
 void CalcBreakOutScoreM2();
-
+void RededgeM1();
+void RededgeM2();
+void DisplayBreakoutScoreM(); 
 
 void setup() {
   //통신 세팅
@@ -1468,9 +1470,6 @@ void DrawBricks() {
   for (int i=2;i<14;i++) {
     matrix.drawLine(2,i,61,i,matrix.Color333(0,0,7));
 }
-  if (bricks[specialBrickX][specialBrickY]) {
-    matrix.drawPixel(specialBrickX, specialBrickY, matrix.Color333(3, 5, 3)); //특별한 벽돌 색상변경
-  }
 }
 
 
@@ -1529,11 +1528,6 @@ void BreakoutGameOver() {
   delay(2000);
 }
 
-//미니게임 함수
-void BreakoutMinigame() {
-  matrix.fillScreen(0);
-}
-
 void DisplayBreakoutScore() { 
   matrix.fillScreen(0); // 화면 지우기
   matrix.setCursor(5, 13); // SCORE 텍스트 위치 조정
@@ -1549,7 +1543,6 @@ void StartBreakOutMulti() {
   unsigned int cur_ball_move = 0;
   unsigned int prev_paddle_move = 0;
   unsigned int cur_paddle_move = 0;
-
   M1paddleY = 31;
   M2paddleY = 31; 
   M1paddleX = 16;
@@ -1566,15 +1559,20 @@ void StartBreakOutMulti() {
   breakout_scoreM2 = 0;
   is_breakout_gameM1 = true ;
   is_breakout_gameM2 = true ;
-
-  
   InitBreakOutM();
   DrawBricksM();
   DrawBallM1();
   DrawBallM2();
   DrawPaddleM1();
   DrawPaddleM2();
-  //텍스트 세팅
+
+  InitBreakOutM();
+  DrawBricksM();
+  DrawBallM1();
+  DrawBallM2();
+  DrawPaddleM1();
+  DrawPaddleM2();
+ //텍스트 세팅
   matrix.setTextSize(1);
   matrix.setTextColor(matrix.Color333(7, 7, 7));
   while (true) {
@@ -1588,7 +1586,18 @@ void StartBreakOutMulti() {
         MoveBallM2();
         DrawBallM2();
       }
-      DrawEdgeM();
+      if (is_breakout_gameM1) {
+        DrawEdgeM1();
+      }
+      if (is_breakout_gameM2) {
+        DrawEdgeM2();
+      }
+      if (!is_breakout_gameM1) {
+        RededgeM1();
+      }
+      if (!is_breakout_gameM2) {
+        RededgeM2();
+      }
       prev_ball_move = cur_ball_move;
     }
 
@@ -1608,28 +1617,46 @@ void StartBreakOutMulti() {
       DrawPaddleM2();
     } 
     prev_paddle_move = cur_paddle_move;
-
     if (!is_breakout_gameM1 && !is_breakout_gameM2) {
+      CalcBreakOutScoreM1();
+      CalcBreakOutScoreM2();
+      PlaySoundEffect(3, true);
       BreakoutGameOver();
-      matrix.fillScreen(0);
+      DisplayBreakoutScoreM();
+      StopBGM();
+      ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
       break ;
     }
+    if (breakout_scoreM1 == 348) {
+      PlaySoundEffect(3, true);
+      DisplayBreakoutScore();
+      StopBGM();
+      ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
+      break ;
+    }
+
   }
 };
-//모서리 벽 그리기 함수(멀티)
-void DrawEdgeM() {
+//모서리 벽 그리기 함수1(멀티)
+void DrawEdgeM1() {
   matrix.drawLine(0,0,0,31,matrix.Color333(0,7,0));
-  matrix.drawLine(2,0,61,0,matrix.Color333(0,7,0));
-  matrix.drawLine(63,0,63,31,matrix.Color333(0,7,0));
   matrix.drawLine(1,0,1,31,matrix.Color333(0,7,0));
-  matrix.drawLine(2,1,61,1,matrix.Color333(0,7,0));
-  matrix.drawLine(62,0,62,31,matrix.Color333(0,7,0));
-  matrix.drawLine(2,31,61,31,matrix.Color333(0,0,0));
-  matrix.drawLine(2,30,61,30,matrix.Color333(0,0,0));
+  matrix.drawLine(2,0,30,0,matrix.Color333(0,7,0));
+  matrix.drawLine(2,1,30,1,matrix.Color333(0,7,0));
   matrix.drawLine(31,0,31,31,matrix.Color333(0,7,0));
-  matrix.drawLine(32,0,32,31,matrix.Color333(0,7,0));
+  matrix.drawLine(2,31,30,31,matrix.Color333(0,0,0));
+  matrix.drawLine(2,30,30,30,matrix.Color333(0,0,0));
 }
-
+//모서리 벽 그리기 함수2(멀티)
+void DrawEdgeM2() {
+  matrix.drawLine(63,0,63,31,matrix.Color333(0,7,0));
+  matrix.drawLine(62,0,62,31,matrix.Color333(0,7,0));
+  matrix.drawLine(33,0,61,0,matrix.Color333(0,7,0));
+  matrix.drawLine(33,1,61,1,matrix.Color333(0,7,0));
+  matrix.drawLine(32,0,32,31,matrix.Color333(0,7,0));
+  matrix.drawLine(33,31,61,31,matrix.Color333(0,0,0));
+  matrix.drawLine(33,30,61,30,matrix.Color333(0,0,0));
+}
 // 벽돌 그리기 함수(멀티)
 void DrawBricksM() {
   for (int i=2;i<14;i++) {
@@ -1945,4 +1972,31 @@ void CalcBreakOutScoreM2() {
       }
     }
   }
+}
+
+//RED EDGE 함수1(멀티)
+void RededgeM1(){
+ matrix.drawLine(31,1,31,31,matrix.Color333(7,2,0));
+ matrix.drawLine(1,1,1,31,matrix.Color333(7,2,0));
+ matrix.drawLine(1,1,31,1,matrix.Color333(7,2,0));
+}
+
+//RED EDGE 함수2(멀티)
+void RededgeM2(){
+ matrix.drawLine(32,1,32,31,matrix.Color333(7,2,0));
+ matrix.drawLine(62,1,62,31,matrix.Color333(7,2,0));
+ matrix.drawLine(32,1,62,1,matrix.Color333(7,2,0));
+}
+void DisplayBreakoutScoreM() { 
+  matrix.fillScreen(0); // 화면 지우기
+  matrix.setCursor(18, 7); // SCORE 텍스트 위치 조정
+  matrix.print("SCORE");
+  matrix.setCursor(10, 15); // SCORE 값 위치 조정
+  matrix.print("P1:");
+  matrix.print(breakout_scoreM1);
+  matrix.setCursor(10, 23); // SCORE 값 위치 조정
+  matrix.print("P2:");
+  matrix.print(breakout_scoreM2);
+  matrix.swapBuffers(true); // 버퍼 교체
+  delay(5000); // 5초 동안 SCORE 화면 유지
 }

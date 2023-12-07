@@ -317,6 +317,7 @@ void DrawEdge();
 void CalcBreakOutScore();
 void BreakoutGameOver();
 void BreakoutMinigame();
+void DisplayBreakoutScore();
 
 void setup() {
   //통신 세팅
@@ -1231,8 +1232,10 @@ void StartBreakOut() {
     prev_paddle_move = cur_paddle_move;
 
     if (!is_breakout_game) {
-      BreakoutGameOver();
+      CalcBreakOutScore();
       PlaySoundEffect(3, true);
+      BreakoutGameOver();
+      DisplayBreakoutScore();
       StopBGM();
       ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
       break ;
@@ -1420,8 +1423,8 @@ void DrawEdge() {
 
 //점수 계산 함수
 void CalcBreakOutScore() {
-  for (int i = 1; i < MAT_C - 1; i++) {
-    for (int j = 1; j < MAT_R - 19; j++) {
+  for (int i = EDGE; i < MAT_C - EDGE; i++) {
+    for (int j = EDGE; j < MAT_R - 18; j++) {
       if (bricks[i][j] == false) {
         breakout_score++;
       }
@@ -1440,4 +1443,14 @@ void BreakoutGameOver() {
 //미니게임 함수
 void BreakoutMinigame() {
   matrix.fillScreen(0);
+}
+
+void DisplayBreakoutScore() { 
+  matrix.fillScreen(0); // 화면 지우기
+  matrix.setCursor(5, 13); // SCORE 텍스트 위치 조정
+  matrix.print("SCORE:");
+  matrix.setCursor(43, 13); // SCORE 값 위치 조정
+  matrix.print(breakout_score);
+  matrix.swapBuffers(true); // 버퍼 교체
+  delay(5000); // 5초 동안 SCORE 화면 유지
 }

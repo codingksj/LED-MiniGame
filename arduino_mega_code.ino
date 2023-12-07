@@ -36,6 +36,7 @@
 
 #define PLAYER1 1
 #define PLAYER2 2
+#define YES 2
 
 #define SNAKE_DELAY 200
 #define SNAKE_1_MAX_LENGTH 420
@@ -157,20 +158,35 @@ const int single_text[] PROGMEM = {
     1065, 1108, 1109, 1110, 1112, 1114, 1116, 1118, 1120, 1122, 
     1123, 1125, 1129, 1130, 1131, 1174, 1176, 1178, 1181, 1182, 
     1184, 1187, 1189, 1193, 1236, 1237, 1238, 1240, 1242, 1246, 
-    1249, 1250, 1251, 1253, 1254, 1255, 1257, 1258, 1259, 
+    1249, 1250, 1251, 1253, 1254, 1255, 1257, 1258, 1259
 };
 const int multi_text[] PROGMEM = {
     1430, 1434, 1436, 1439, 1441, 1445, 1446, 1447, 1449, 1494, 
     1495, 1497, 1498, 1500, 1503, 1505, 1510, 1513, 1558, 1560, 
     1562, 1564, 1567, 1569, 1574, 1577, 1622, 1626, 1628, 1631, 
     1633, 1638, 1641, 1686, 1690, 1693, 1694, 1697, 1698, 1699, 
-    1702, 1705, 
+    1702, 1705
+};
+const int yes_text[] PROGMEM = {
+    983, 985, 987, 988, 989, 991, 992, 993, 996, 998, 
+    1000, 1047, 1049, 1051, 1055, 1060, 1062, 1064, 1111, 1112, 
+    1113, 1115, 1116, 1117, 1119, 1120, 1121, 1124, 1126, 1128, 
+    1176, 1179, 1185, 1240, 1243, 1244, 1245, 1247, 1248, 1249, 
+    1252, 1254, 1256 
+};
+const int no_text[] PROGMEM = {
+    1431, 1435, 1438, 1439, 1440, 1444, 1446, 1448, 1495, 1496, 
+    1499, 1501, 1505, 1508, 1510, 1512, 1559, 1561, 1563, 1565, 
+    1569, 1572, 1574, 1576, 1623, 1626, 1627, 1629, 1633, 1687, 
+    1691, 1694, 1695, 1696, 1700, 1702, 1704 
 };
 int title_pixels_num = sizeof(title_pixels) / sizeof(int);
 int menu_1_pixels_num = sizeof(menu_1_pixels) / sizeof(int);
 int menu_2_pixels_num = sizeof(menu_2_pixels) / sizeof(int);
 int single_text_num = sizeof(single_text) / sizeof(int);
 int multi_text_num = sizeof(multi_text) / sizeof(int);
+int yes_text_num = sizeof(yes_text) / sizeof(int);
+int no_text_num = sizeof(no_text) / sizeof(int);
 
 unsigned long game_music_length[MUSIC_NUMBER+1] = {
   0,
@@ -262,6 +278,24 @@ int specialBrickX = 1 + random(62) ;
 int specialBrickY = 1 + random(10) ;
 int breakout_score = 0;
 bool breakout_score_table[BREAKOUT_MAX_SCORE];
+int M1paddleY = 31;
+int M2paddleY = 31; 
+int M1paddleX = 16;
+int M2paddleX = 47;
+int M1ballX = 16;
+int M2ballX = 47;
+int M1ballY = 22;
+int M2ballY = 22;
+int M1ballSpeedX = 1;
+int M1ballSpeedY = 1;
+int M2ballSpeedX = 1;
+int M2ballSpeedY = 1;
+int M1paddleSpeedX = -1;
+int M2paddleSpeedX = -1;
+int breakout_scoreM1 = 0;
+int breakout_scoreM2 = 0;
+bool is_breakout_gameM1 = true;
+bool is_breakout_gameM2 = true;
 
 //---------- 함수 ----------
 int ProcessInputButton1();
@@ -280,6 +314,7 @@ void PrintObject(int* pixels, int pixel_num, int start_x, int start_y, uint16_t 
 void ClearObject(int* pixels, int pixel_num, int start_x, int start_y);
 void UpdateMatrix();
 bool RetryGame();
+void PrintRetryMenu();
 
 void PlayBGM(const int bgm_number, bool is_play_next);
 void StopBGM();
@@ -302,6 +337,7 @@ bool MultiCheckCollision(char* snake_x, char* snake_y, char* othersnake_x, char*
 void MultiGenerateFood(Coord* food, char* snake_x, char* snake_y, char* othersnake_x, char* othersnake_y, int snake_length, int P2snake_length);
 void MultiEatFruit(char* snake_x, char* snake_y, char* othersnake_x, char* othersnake_y, Snake* snake, Snake* othersnake, Coord* food);
 void SnakeGameOver(int score);
+void PrintSnakeHighScore();
 
 void PlayBreakOut();
 void PrintBreakOutMenu();
@@ -318,6 +354,21 @@ void CalcBreakOutScore();
 void BreakoutGameOver();
 void BreakoutMinigame();
 void DisplayBreakoutScore();
+void StartBreakOutMulti();
+void DrawEdgeM();
+void DrawBricksM();
+void DrawBallM1();
+void DrawBallM2();
+void DrawPaddleM1();
+void DrawPaddleM2();
+void InitBreakOutM(); 
+void MoveBallM1();
+void MoveBallM2();
+void MovePaddleM1();
+void MovePaddleM2();
+void CalcBreakOutScoreM1();
+void CalcBreakOutScoreM2();
+
 
 void setup() {
   //통신 세팅
@@ -623,23 +674,45 @@ void ClearObject(const int* pixels, int pixel_num, int start_x, int start_y) {
 
 bool RetryGame() {
   ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
+  PrintRetryMenu();
   InitMatrixEdge(matrix.Color333(0,7,7));
   matrix.setCursor(15, 5);
   matrix.print("Retry?");
 
+  int btn1 = NONE;
+  int btn2 = NONE;
+  int option1 = WAIT;
+  int option2 = WAIT;
+  int data;
+
+  track_number = 1;
+  is_p1_selected = is_p2_selected = false;
+
   while (true) {
-    int btn1 = ProcessInputButton1();
-    int btn2 = ProcessInputButton2();
-    if (btn1 == LEFT || btn2 == LEFT){
-      return false;
-    }
-    if (btn1 == SELECT || btn2 == SELECT) {
-      return true;
+    btn1 = ProcessInputButton1();
+    btn2 = ProcessInputButton2();
+    PlayBGM(track_number, false);
+    option1 = CheckP1(btn1);
+    option2 = CheckP2(btn2);
+    if(option1 == option2 && option1>0){
+      break;
     }
   }
-  return false;
+
+  PlaySoundEffect(1, true);
+  Serial.println(option1);
+  delay(1500);
+  StopBGM();
+
+  return (option1 == YES);
 }
 
+void PrintRetryMenu(){
+  matrix.drawRect(menu_1.x, menu_1.y, menu_1.w, menu_1.h, matrix.Color333(0,7,0));
+  matrix.drawRect(menu_2.x, menu_2.y, menu_2.w, menu_2.h, matrix.Color333(7,0,0));
+  PrintObject(yes_text, yes_text_num, 0, 0, matrix.Color333(0,7,0));
+  PrintObject(no_text, no_text_num, 0, 0, matrix.Color333(7,0,0));
+};
 
 void PlayBGM(const int bgm_number, bool is_play_next) {
   int data;
@@ -699,11 +772,13 @@ void PlaySnake(){
     switch(snake_players){
       case SINGLE:
         StartSnake();
+        SnakeGameOver();
         break;
       case MULTI:
         StartSnakeMulti();
         break;
     }
+    snake_score = 0;
     is_snake_over = !RetryGame();
     ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
   }
@@ -889,7 +964,7 @@ void EatFruit(char* snake_x, char* snake_y, Snake* snake, Coord* food) {
     PlaySoundEffect(5, true);
     matrix.drawRect(food->x, food->y, 2, 2, matrix.Color333(0, 0, 0));
     snake->length++;
-
+    snake_score++;
     // 스네이크의 길이가 증가했으므로 새로운 과일을 생성
     GenerateFood(food, snake_x, snake_y, snake->length);
 
@@ -1109,9 +1184,19 @@ void MultiEatFruit(char* snake_x, char* snake_y, char* othersnake_x, char* other
 }
 
 void SnakeGameOver(){
+  ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
+  matrix.setCursor(5, 13);
+  matrix.print("SCORE:");
+  matrix.setCursor(43, 13);
+  matrix.print(snake_score);
+  matrix.swapBuffers(true); // 버퍼 교체
+  delay(3000);
+};
 
+void PrintSnakeHighScore(){
 
 };
+
 
 void PlayBreakOut(){
   bool is_breakout_over = false;
@@ -1129,7 +1214,7 @@ void PlayBreakOut(){
         StartBreakOut();
         break;
       case MULTI:
-        StartBreakOut();
+        StartBreakOutMulti();
         break;
     }
     is_breakout_over = !RetryGame();
@@ -1453,4 +1538,407 @@ void DisplayBreakoutScore() {
   matrix.print(breakout_score);
   matrix.swapBuffers(true); // 버퍼 교체
   delay(5000); // 5초 동안 SCORE 화면 유지
+}
+
+void StartBreakOutMulti() {
+  unsigned int prev_ball_move = 0;
+  unsigned int cur_ball_move = 0;
+  unsigned int prev_paddle_move = 0;
+  unsigned int cur_paddle_move = 0;
+
+  M1paddleY = 31;
+  M2paddleY = 31; 
+  M1paddleX = 16;
+  M2paddleX = 47;
+  M1ballX = 16;
+  M2ballX = 47;
+  M1ballY = 22;
+  M2ballY = 22;
+  M1ballSpeedX = 1;
+  M1ballSpeedY = 1;
+  M2ballSpeedX = 1;
+  M2ballSpeedY = 1;
+  breakout_scoreM1 = 0;
+  breakout_scoreM2 = 0;
+  is_breakout_gameM1 = true ;
+  is_breakout_gameM2 = true ;
+
+  
+  InitBreakOutM();
+  DrawBricksM();
+  DrawBallM1();
+  DrawBallM2();
+  DrawPaddleM1();
+  DrawPaddleM2();
+  //텍스트 세팅
+  matrix.setTextSize(1);
+  matrix.setTextColor(matrix.Color333(7, 7, 7));
+  while (true) {
+    cur_ball_move = cur_paddle_move = millis();                      
+    if(cur_ball_move - prev_ball_move >= BALL_DELAY){
+      if (is_breakout_gameM1) {
+        MoveBallM1();
+        DrawBallM1();
+      }
+      if (is_breakout_gameM2) {
+        MoveBallM2();
+        DrawBallM2();
+      }
+      DrawEdgeM();
+      prev_ball_move = cur_ball_move;
+    }
+
+    Serial.print("paddle : ");
+    Serial.println(M1paddleX);
+    Serial.println(M2paddleX);
+    /*Serial.print("time : ");
+    Serial.print(prev_paddle_move);
+    Serial.print(",");
+    Serial.println(cur_paddle_move);*/
+    if (is_breakout_gameM1) {
+      MovePaddleM1();
+      DrawPaddleM1(); 
+    }
+    if (is_breakout_gameM2) {
+      MovePaddleM2();
+      DrawPaddleM2();
+    } 
+    prev_paddle_move = cur_paddle_move;
+
+    if (!is_breakout_gameM1 && !is_breakout_gameM2) {
+      BreakoutGameOver();
+      matrix.fillScreen(0);
+      break ;
+    }
+  }
+};
+//모서리 벽 그리기 함수(멀티)
+void DrawEdgeM() {
+  matrix.drawLine(0,0,0,31,matrix.Color333(0,7,0));
+  matrix.drawLine(2,0,61,0,matrix.Color333(0,7,0));
+  matrix.drawLine(63,0,63,31,matrix.Color333(0,7,0));
+  matrix.drawLine(1,0,1,31,matrix.Color333(0,7,0));
+  matrix.drawLine(2,1,61,1,matrix.Color333(0,7,0));
+  matrix.drawLine(62,0,62,31,matrix.Color333(0,7,0));
+  matrix.drawLine(2,31,61,31,matrix.Color333(0,0,0));
+  matrix.drawLine(2,30,61,30,matrix.Color333(0,0,0));
+  matrix.drawLine(31,0,31,31,matrix.Color333(0,7,0));
+  matrix.drawLine(32,0,32,31,matrix.Color333(0,7,0));
+}
+
+// 벽돌 그리기 함수(멀티)
+void DrawBricksM() {
+  for (int i=2;i<14;i++) {
+    matrix.drawLine(2,i,30,i,matrix.Color333(0,0,7));
+    matrix.drawLine(33,i,63,i,matrix.Color333(0,0,7));
+  }
+}
+
+//공 그리는 함수1(멀티)
+void DrawBallM1() { 
+  matrix.drawPixel(M1ballX, M1ballY, matrix.Color333(7, 7, 7));
+}
+
+//공 그리는 함수2(멀티)
+void DrawBallM2() { 
+  matrix.drawPixel(M2ballX, M2ballY, matrix.Color333(7, 7, 7));
+}
+
+//패들 그리는 함수1(멀티)
+void DrawPaddleM1() {
+    matrix.drawLine(M1paddleX-1, M1paddleY, M1paddleX+1, M1paddleY,  matrix.Color333(2, 7, 7));
+}
+
+//패들 그리는 함수2(멀티)
+void DrawPaddleM2() {
+    matrix.drawLine(M2paddleX-1, M1paddleY, M2paddleX+1, M1paddleY,  matrix.Color333(2, 7, 7));
+}
+
+//벽돌 초기화 함수(멀티)
+void InitBreakOutM() {
+  // 벽돌 초기화
+  for (int i = 2; i < MAT_C - 2; i++) {
+    for (int j = 2; j < MAT_R - 18; j++) {
+      bricks[i][j] = true;
+    }
+  }
+  for (int i = 2; i < MAT_C - 2; i++) {
+    for (int j = MAT_R - 18; j < MAT_R; j++) {
+      bricks[i][j] = false;
+    }
+  }
+  for (int i = 1; i < MAT_R; i++) {
+    bricks[0][i] = false ;
+    bricks[63][i] = false ;
+    bricks[1][i] = false ;
+    bricks[62][i] = false ;
+  }
+  for (int i = 0; i < MAT_C; i++) {
+    bricks[i][0] = false ;
+    bricks[i][1] = false ;
+  }
+  for (int i = 1; i < MAT_R; i++) {
+    bricks[31][i] = false ;
+    bricks[32][i] = false ;
+  }
+}
+
+// 공을 움직이는 함수1(멀티)
+void MoveBallM1() {
+  // 현재 위치에서 공을 지웁니다.
+  bool is_M1paddle_L;
+  bool is_M1paddle_M;
+  bool is_M1paddle_R;
+  bool is_M1side;
+  bool is_M1ceil;
+  bool is_M1floor;
+  matrix.drawPixel(M1ballX, M1ballY, matrix.Color333(0, 0, 0));
+
+  // 새로운 위치로 공을 이동합니다.
+  M1ballX += M1ballSpeedX;
+  M1ballY += M1ballSpeedY;
+  Serial.print("ball : ");
+  Serial.print(M1ballX);
+  Serial.print(",");
+  Serial.print(M1ballY);
+  Serial.println();
+
+  is_M1paddle_L = (M1ballY + 1 == M1paddleY) && (M1ballX >= M1paddleX-1 && M1ballX <= M1paddleX);
+  is_M1paddle_M = (M1ballY + 1 == M1paddleY) && (M1ballX == M1paddleX);
+  is_M1paddle_R = (M1ballY + 1 == M1paddleY) && (M1ballX >= M1paddleX && M1ballX <= M1paddleX + 1);
+  is_M1floor = (M1ballY > MAT_R - EDGE);
+  is_M1ceil = (M1ballY <= EDGE);
+  is_M1side = (M1ballX <= EDGE) || (M1ballX >= 31);
+  if (is_M1floor) {
+    is_breakout_gameM1 = false;
+    return;
+  }
+  if (is_M1paddle_L) {
+    M1ballSpeedY = -M1ballSpeedY;
+    M1ballSpeedX = -1;
+    return;
+  }
+  if (is_M1paddle_M) {
+    M1ballSpeedY = -M1ballSpeedY;
+    M1ballSpeedX = 0;
+    return;
+  }
+  if (is_M1paddle_R) {
+    M1ballSpeedY = -M1ballSpeedY;
+    M1ballSpeedX = 1;
+    return;
+  }
+  // 벽에 부딪혔다면 방향을 변경합니다.
+  if (is_M1side) {
+    M1ballSpeedX = -M1ballSpeedX;
+  }
+  if (is_M1ceil) {
+    M1ballSpeedY = -M1ballSpeedY;
+  }
+// 벽돌과의 충돌 검사
+  int nextXM1 = M1ballX + M1ballSpeedX;
+  int nextYM1 = M1ballY + M1ballSpeedY;
+
+  if (bricks[nextXM1][M1ballY]) {
+    matrix.drawRect(nextXM1 + M1ballSpeedX, M1ballY - 1, 2, 2, matrix.Color333(0, 0, 0));
+    if (M1ballSpeedX < 0) {
+      for (int i = 0; i > -2; i--) {
+        for (int j = 0; j < 2; j++) {
+          bricks[nextXM1 + i][M1ballY - 1 + j] = false;
+        }
+      }
+    } else {
+      for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+          bricks[nextXM1 + i][M1ballY - 1 + j] = false;
+        }
+      }
+    }
+    M1ballSpeedX = -M1ballSpeedX;
+    PlaySoundEffect(4, true);
+  } else if (bricks[M1ballX][nextYM1]) {
+    matrix.drawRect(M1ballX - 1, nextYM1 - 1, 3, 2, matrix.Color333(0, 0, 0));
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 2; j++) {
+        bricks[M1ballX - 1 + i][nextYM1 - 1 + j] = false;
+      }
+    }
+    M1ballSpeedY = -M1ballSpeedY;
+    PlaySoundEffect(4, true);
+  } else if (bricks[nextXM1][nextYM1]) {
+    matrix.drawRect(nextXM1 + M1ballSpeedX, nextYM1 - 1, 2, 2, matrix.Color333(0, 0, 0));
+    if (M1ballSpeedX < 0) {
+      for (int i = 0; i > -2; i--) {
+        for (int j = 0; j < 2; j++) {
+          bricks[nextXM1 + i][nextYM1 - 1 + j] = false;
+        }
+      }
+    } else {
+      for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+          bricks[nextXM1 + i][nextYM1 - 1 + j] = false;
+        }
+      }
+    }
+    M1ballSpeedY = -M1ballSpeedY;
+    M1ballSpeedX = -M1ballSpeedX;
+    PlaySoundEffect(4, true);
+  }
+}
+
+// 공을 움직이는 함수2(멀티)
+void MoveBallM2() {
+  // 현재 위치에서 공을 지웁니다.
+  bool is_M2paddle_L;
+  bool is_M2paddle_M;
+  bool is_M2paddle_R;
+  bool is_M2side;
+  bool is_M2ceil;
+  bool is_M2floor;
+  matrix.drawPixel(M2ballX, M2ballY, matrix.Color333(0, 0, 0));
+
+  // 새로운 위치로 공을 이동합니다.
+  M2ballX += M2ballSpeedX;
+  M2ballY += M2ballSpeedY;
+  Serial.print("ball : ");
+  Serial.print(M2ballX);
+  Serial.print(",");
+  Serial.print(M2ballY);
+  Serial.println();
+
+  is_M2paddle_L = (M2ballY + 1 == M2paddleY) && (M2ballX >= M2paddleX-1 && M2ballX <= M2paddleX);
+  is_M2paddle_M = (M2ballY + 1 == M2paddleY) && (M2ballX == M2paddleX);
+  is_M2paddle_R = (M2ballY + 1 == M2paddleY) && (M2ballX >= M2paddleX && M2ballX <= M2paddleX + 1);
+  is_M2floor = (M2ballY > MAT_R - EDGE);
+  is_M2ceil = (M2ballY <= EDGE);
+  is_M2side = (M2ballX <= 32) || (M2ballX >= MAT_C - EDGE - 1);
+  if (is_M2floor) {
+    is_breakout_gameM2 = false;
+    return;
+  }
+  if (is_M2paddle_L) {
+    M2ballSpeedY = -M2ballSpeedY;
+    M2ballSpeedX = -1;
+    return;
+  }
+  if (is_M2paddle_M) {
+    M2ballSpeedY = -M2ballSpeedY;
+    M2ballSpeedX = 0;
+    return;
+  }
+  if (is_M2paddle_R) {
+    M2ballSpeedY = -M2ballSpeedY;
+    M2ballSpeedX = 1;
+    return;
+  }
+  // 벽에 부딪혔다면 방향을 변경합니다.
+  if (is_M2side) {
+    M2ballSpeedX = -M2ballSpeedX;
+  }
+  if (is_M2ceil) {
+    M2ballSpeedY = -M2ballSpeedY;
+  }
+// 벽돌과의 충돌 검사
+  int nextXM2 = M2ballX + M2ballSpeedX;
+  int nextYM2 = M2ballY + M2ballSpeedY;
+
+ if (bricks[nextXM2][M2ballY]) {
+    matrix.drawRect(nextXM2 + M2ballSpeedX, M2ballY - 1, 2, 2, matrix.Color333(0, 0, 0));
+    if (M2ballSpeedX < 0) {
+      for (int i = 0; i > -2; i--) {
+        for (int j = 0; j < 2; j++) {
+          bricks[nextXM2 + i][M2ballY - 1 + j] = false;
+        }
+      }
+    } else {
+      for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+          bricks[nextXM2 + i][M2ballY - 1 + j] = false;
+        }
+      }
+    }
+    M2ballSpeedX = -M2ballSpeedX;
+    PlaySoundEffect(4, true);
+  } else if (bricks[M2ballX][nextYM2]) {
+    matrix.drawRect(M2ballX - 1, nextYM2 - 1, 3, 2, matrix.Color333(0, 0, 0));
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 2; j++) {
+        bricks[M2ballX - 1 + i][nextYM2 - 1 + j] = false;
+      }
+    }
+    M2ballSpeedY = -M2ballSpeedY;
+    PlaySoundEffect(4, true);
+  } else if (bricks[nextXM2][nextYM2]) {
+    matrix.drawRect(nextXM2 + M2ballSpeedX, nextYM2 - 1, 2, 2, matrix.Color333(0, 0, 0));
+    if (M2ballSpeedX < 0) {
+      for (int i = 0; i > -2; i--) {
+        for (int j = 0; j < 2; j++) {
+          bricks[nextXM2 + i][nextYM2 - 1 + j] = false;
+        }
+      }
+    } else {
+      for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+          bricks[nextXM2 + i][nextYM2 - 1 + j] = false;
+        }
+      }
+    }
+    M2ballSpeedY = -M2ballSpeedY;
+    M2ballSpeedX = -M2ballSpeedX;
+    PlaySoundEffect(4, true);
+  }
+}
+
+
+
+//패들 움직이는 함수1(멀티)
+void MovePaddleM1() {
+  int btn1 = ProcessInputButton1();
+  if ( M1paddleX != EDGE + 2 && btn1 == LEFT) {
+    Serial.println("left");
+    matrix.drawLine(M1paddleX-1, M1paddleY, M1paddleX+1, M1paddleY,  matrix.Color333(0, 0, 0));
+    M1paddleX+=M1paddleSpeedX;
+  }
+  else if ( M1paddleX != 29 && btn1 == RIGHT) {
+    Serial.println("right");
+    matrix.drawLine(M1paddleX-1, M1paddleY, M1paddleX+1, M1paddleY,  matrix.Color333(0, 0, 0));
+    M1paddleX-=M1paddleSpeedX;
+  }
+ }
+
+//패들 움직이는 함수2(멀티)
+void MovePaddleM2() {
+  int btn2 = ProcessInputButton2();
+  if ( M2paddleX != 34 && btn2 == LEFT) {
+    Serial.println("left");
+    matrix.drawLine(M2paddleX-1, M2paddleY, M2paddleX+1, M2paddleY,  matrix.Color333(0, 0, 0));
+    M2paddleX+=M2paddleSpeedX;
+  }
+  else if ( M2paddleX != MAT_C-EDGE-2 && btn2 == RIGHT) {
+    Serial.println("right");
+    matrix.drawLine(M2paddleX-1, M2paddleY, M2paddleX+1, M2paddleY,  matrix.Color333(0, 0, 0));
+    M2paddleX-=M2paddleSpeedX;
+  }
+ }
+
+//점수 계산 함수1(멀티)
+void CalcBreakOutScoreM1() {
+  for (int i = 2; i < 31; i++) {
+    for (int j = 2; j <MAT_R - 19 ; j++) {
+      if (bricks[i][j] == false) {
+        breakout_scoreM1++;
+      }
+    }
+  }
+}
+
+//점수 계산 함수2(멀티)
+void CalcBreakOutScoreM2() {
+  for (int i = 33; i < 62; i++) {
+    for (int j = 2; j <MAT_R - 19 ; j++) {
+      if (bricks[i][j] == false) {
+        breakout_scoreM2++;
+      }
+    }
+  }
 }

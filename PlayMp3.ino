@@ -45,7 +45,7 @@ void setup() {
   Serial.begin(RATE);
   mp3_serial.begin(RATE);
   mp3.begin(mp3_serial);
-  mp3.volume(13);
+  mp3.volume(25);
 
   dataSerial.begin(RATE);
 

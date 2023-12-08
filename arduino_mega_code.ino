@@ -118,8 +118,8 @@ const char button_names[6][10] = {
   "SELECT"
 };
 
-int dx[] = {-1,0,1,0};
-int dy[] = {0,-1,0,1};
+int dx[] = {-1,0,1,0,-1,-1,1,1};
+int dy[] = {0,-1,0,1,1,-1,1,-1};
 
 const int title_pixels[] PROGMEM = {
   398, 402, 404, 406, 410, 412, 417, 418, 419, 422,
@@ -390,7 +390,7 @@ void setup() {
   mega_serial.begin(BAUD_RATE);
   mp3_serial.begin(BAUD_RATE);
   mp3.begin(mp3_serial);
-  mp3.volume(18);
+  mp3.volume(23);
 
   pinMode(BTN_SRC_1, INPUT);
   pinMode(BTN_SRC_2, INPUT);
@@ -1064,14 +1064,15 @@ void StartSnakeMulti() {
       prev_time = cur_time;
     }
     if(MultiCheckCollision(p1_snake_x, p1_snake_y, p2_snake_x, p2_snake_y, p_snake, p_P2snake, p_winner)){
-      for (int i = 1; i <= P2snake.length; i++) {
-        matrix.drawRect(p2_snake_x[i], p2_snake_y[i], 2, 2, matrix.Color333(7, 0, 0));
-      }
-      for (int i = 1; i <= snake.length; i++) {
-        matrix.drawRect(p1_snake_x[i], p1_snake_y[i], 2, 2, matrix.Color333(7, 0, 0));
-      }
       PlaySoundEffect(3, true);
       if(winner == PLAYER1){
+        for (int i = 1; i <= snake.length; i++) {
+          matrix.drawRect(p1_snake_x[i], p1_snake_y[i], 2, 2, i==1 ? matrix.Color333(7, 7, 0) : matrix.Color333(0, 7, 0));
+        }
+        for (int i = 1; i <= P2snake.length; i++) {
+          matrix.drawRect(p2_snake_x[i], p2_snake_y[i], 2, 2, matrix.Color333(7, 0, 0));
+        }
+        delay(2000);
         for(int i=0;i<3;i++){
           ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
           matrix.setCursor(5, MAT_R/ 2 - 4); 
@@ -1080,6 +1081,13 @@ void StartSnakeMulti() {
         }
       }
       else if(winner == PLAYER2){
+        for (int i = 1; i <= snake.length; i++) {
+          matrix.drawRect(p1_snake_x[i], p1_snake_y[i], 2, 2, matrix.Color333(7, 0, 0));
+        }
+        for (int i = 1; i <= P2snake.length; i++) {
+          matrix.drawRect(p2_snake_x[i], p2_snake_y[i], 2, 2, i == 1 ? matrix.Color333(0, 7, 0) : matrix.Color333(7, 7, 0));
+        }
+        delay(2000);
         for(int i=0;i<3;i++){
           ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
           matrix.setCursor(5, MAT_R/ 2 - 4); 
@@ -1088,10 +1096,17 @@ void StartSnakeMulti() {
         }
       }
       else{
-          ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
-          matrix.setCursor(5, MAT_R/ 2 - 4); 
-          matrix.print("DRAW");
-          delay(2000);
+        for (int i = 1; i <= P2snake.length; i++) {
+          matrix.drawRect(p2_snake_x[i], p2_snake_y[i], 2, 2, matrix.Color333(7, 0, 0));
+        }
+        for (int i = 1; i <= snake.length; i++) {
+          matrix.drawRect(p1_snake_x[i], p1_snake_y[i], 2, 2, matrix.Color333(7, 0, 0));
+        }
+        delay(2000);
+        ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
+        matrix.setCursor(5, MAT_R/ 2 - 4); 
+        matrix.print("DRAW");
+        delay(2000);
       }
       break;
     }
@@ -1403,9 +1418,14 @@ void MoveBall() {
     is_breakout_game = false;
     return;
   }
-  if (is_paddle_L) {
+  if (is_paddle_L && paddleX != 4) {
     ballSpeedY = -ballSpeedY;
     ballSpeedX = -1;
+    return;
+  }
+  if (is_paddle_L && paddleX == 4) {
+    ballSpeedY = -ballSpeedY;
+    ballSpeedX = 1;
     return;
   }
   if (is_paddle_M) {
@@ -1413,7 +1433,12 @@ void MoveBall() {
     ballSpeedX = 0;
     return;
   }
-  if (is_paddle_R) {
+  if (is_paddle_R && paddleX != 59) {
+    ballSpeedY = -ballSpeedY;
+    ballSpeedX = 1;
+    return;
+  }
+  if (is_paddle_R && paddleX == 59) {
     ballSpeedY = -ballSpeedY;
     ballSpeedX = 1;
     return;
@@ -1612,19 +1637,20 @@ void StartBreakOutMulti() {
         MoveBallM2();
         DrawBallM2();
       }
-      is_breakout_gameM1 ? DrawEdgeM1() : RemoveLeftside();
+      is_breakout_gameM1 ? DrawEdgeM1() : RemoveLeftside();      
+      is_breakout_gameM2 ? DrawEdgeM2() : RemoveRightSide();
       /*if (is_breakout_gameM1) {
         DrawEdgeM1();
-      }*/
+      }
       if (is_breakout_gameM2) {
         DrawEdgeM2();
       }
       /*if (!is_breakout_gameM1) {
         RemoveLeftside();
-      }*/
+      }
       if (!is_breakout_gameM2) {
         RemoveRightSide();
-      }
+      }*/
       prev_ball_move = cur_ball_move;
     }
 
@@ -1684,6 +1710,7 @@ void DrawEdgeM1() {
   matrix.drawLine(2,0,30,0,matrix.Color333(0,7,0));
   matrix.drawLine(2,1,30,1,matrix.Color333(0,7,0));
   matrix.drawLine(31,0,31,31,matrix.Color333(0,7,0));
+  matrix.drawLine(32,0,32,31,matrix.Color333(0,7,0));
   matrix.drawLine(2,31,30,31,matrix.Color333(0,0,0));
   matrix.drawLine(2,30,30,30,matrix.Color333(0,0,0));
 }
@@ -1694,6 +1721,7 @@ void DrawEdgeM2() {
   matrix.drawLine(33,0,61,0,matrix.Color333(0,7,0));
   matrix.drawLine(33,1,61,1,matrix.Color333(0,7,0));
   matrix.drawLine(32,0,32,31,matrix.Color333(0,7,0));
+  matrix.drawLine(31,0,31,31,matrix.Color333(0,7,0));
   matrix.drawLine(33,31,61,31,matrix.Color333(0,0,0));
   matrix.drawLine(33,30,61,30,matrix.Color333(0,0,0));
 }
@@ -1783,12 +1811,12 @@ void MoveBallM1() {
     is_breakout_gameM1 = false;
     return;
   }
-  if (is_M1paddle_L && M1ballX != 3) {
+  if (is_M1paddle_L && M1paddleX != 2) {
     M1ballSpeedY = -M1ballSpeedY;
     M1ballSpeedX = -1;
     return;
   }
-  if (is_M1paddle_L && M1ballX == 3) {
+  if (is_M1paddle_L && M1paddleX == 2) {
     M1ballSpeedY = -M1ballSpeedY;
     M1ballSpeedX = 1;
     return;
@@ -1798,12 +1826,12 @@ void MoveBallM1() {
     M1ballSpeedX = 0;
     return;
   }
-  if (is_M1paddle_R && M1ballX != 29) {
+  if (is_M1paddle_R && M1paddleX != 29) {
     M1ballSpeedY = -M1ballSpeedY;
     M1ballSpeedX = 1;
     return;
   }
-  if (is_M1paddle_R && M1ballX == 29) {
+  if (is_M1paddle_R && M1paddleX == 29) {
     M1ballSpeedY = -M1ballSpeedY;
     M1ballSpeedX = -1;
     return;
@@ -1896,12 +1924,12 @@ void MoveBallM2() {
     is_breakout_gameM2 = false;
     return;
   }
-  if (is_M2paddle_L && M2ballX != 34) {
+  if (is_M2paddle_L && M2paddleX != 34) {
     M2ballSpeedY = -M2ballSpeedY;
     M2ballSpeedX = -1;
     return;
   }
-  if (is_M2paddle_L && M2ballX == 34) {
+  if (is_M2paddle_L && M2paddleX == 34) {
     M2ballSpeedY = -M2ballSpeedY;
     M2ballSpeedX = 1;
     return;
@@ -1911,12 +1939,12 @@ void MoveBallM2() {
     M2ballSpeedX = 0;
     return;
   }
-  if (is_M2paddle_R && M2ballX != 60) {
+  if (is_M2paddle_R && M2paddleX != 60) {
     M2ballSpeedY = -M2ballSpeedY;
     M2ballSpeedX = 1;
     return;
   }
-if (is_M2paddle_R && M2ballX == 60) {
+if (is_M2paddle_R && M2paddleX == 60) {
     M2ballSpeedY = -M2ballSpeedY;
     M2ballSpeedX = -1;
     return;
@@ -1982,7 +2010,7 @@ if (is_M2paddle_R && M2ballX == 60) {
 //패들 움직이는 함수1(멀티)
 void MovePaddleM1() {
   int btn1 = ProcessInputButton1();
-  if ( M1paddleX != EDGE + 2 && btn1 == LEFT) {
+  if ( M1paddleX != EDGE + 1 && btn1 == LEFT) {
     Serial.println("left");
     matrix.drawLine(M1paddleX-1, M1paddleY, M1paddleX+1, M1paddleY,  matrix.Color333(0, 0, 0));
     M1paddleX+=M1paddleSpeedX;
@@ -2033,12 +2061,12 @@ void CalcBreakOutScoreM2() {
 
 void DisplayBreakoutScoreM() { 
   matrix.fillScreen(0); // 화면 지우기
-  matrix.setCursor(18, 7); // SCORE 텍스트 위치 조정
+  matrix.setCursor(18, 5); // SCORE 텍스트 위치 조정
   matrix.print("SCORE");
-  matrix.setCursor(10, 15); // SCORE 값 위치 조정
+  matrix.setCursor(10, 14); // SCORE 값 위치 조정
   matrix.print("P1:");
   matrix.print(breakout_scoreM1);
-  matrix.setCursor(10, 23); // SCORE 값 위치 조정
+  matrix.setCursor(10, 22); // SCORE 값 위치 조정
   matrix.print("P2:");
   matrix.print(breakout_scoreM2);
   matrix.swapBuffers(true); // 버퍼 교체
@@ -2046,15 +2074,11 @@ void DisplayBreakoutScoreM() {
 }
 
 void RemoveLeftside() {
-  matrix.fillRect(2,2,29,28,matrix.Color333(0,0,0));
-  matrix.drawLine(2,2,30,29,matrix.Color333(3,0,0));
-  matrix.drawLine(2,29,30,2,matrix.Color333(3,0,0));
+  matrix.fillRect(2,2,29,14,matrix.Color333(0,0,0));
 }
 
 void RemoveRightSide() {
-  matrix.fillRect(33,29,29,28,matrix.Color333(0,0,0));
-  matrix.drawLine(33,29,61,2,matrix.Color333(3,0,0));
-  matrix.drawLine(33,2,61,29,matrix.Color333(3,0,0));
+  matrix.fillRect(33,2,29,14,matrix.Color333(0,0,0));
 }
 
 void WinnerP1() {

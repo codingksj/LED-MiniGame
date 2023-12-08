@@ -187,6 +187,15 @@ int single_text_num = sizeof(single_text) / sizeof(int);
 int multi_text_num = sizeof(multi_text) / sizeof(int);
 int yes_text_num = sizeof(yes_text) / sizeof(int);
 int no_text_num = sizeof(no_text) / sizeof(int);
+uint16_t colors[] = {
+  matrix.Color333(0, 0, 7),
+  matrix.Color333(0, 7, 0),
+  matrix.Color333(2, 7, 7),
+  matrix.Color333(0, 7, 7),
+  matrix.Color333(0, 7, 2),
+};
+int cur_color = 0;
+int prev_color = 0;
 
 unsigned long game_music_length[MUSIC_NUMBER+1] = {
   0,
@@ -368,9 +377,12 @@ void MovePaddleM1();
 void MovePaddleM2();
 void CalcBreakOutScoreM1();
 void CalcBreakOutScoreM2();
-void RededgeM1();
-void RededgeM2();
 void DisplayBreakoutScoreM(); 
+void RemoveLeftside();
+void RemoveRightSide();
+void WinnerP1();
+void WinnerP2();
+void Displaysuccess();
 
 void setup() {
   //통신 세팅
@@ -378,7 +390,7 @@ void setup() {
   mega_serial.begin(BAUD_RATE);
   mp3_serial.begin(BAUD_RATE);
   mp3.begin(mp3_serial);
-  mp3.volume(10);
+  mp3.volume(18);
 
   pinMode(BTN_SRC_1, INPUT);
   pinMode(BTN_SRC_2, INPUT);
@@ -505,21 +517,12 @@ void PlayWaitAnimation() {
     {EDGE+1, EDGE+1, 12, 12}, 
   };
   int dirs[RECT_COUNT] = {0,1,2,3,3};
-  int cur_color = 0;
-  int prev_color = 0;
   int btn1 = NONE;
   int btn2 = NONE;
   int data;
 
   unsigned long prev_time = 0;
   unsigned long cur_time = 0;
-  uint16_t colors[] = {
-    matrix.Color333(0, 0, 7),
-    matrix.Color333(0, 7, 0),
-    matrix.Color333(2, 7, 7),
-    matrix.Color333(0, 7, 7),
-    matrix.Color333(0, 7, 2),
-  };
   track_number = 2;
   se_number = 3;
   while (!(btn1 == SELECT || btn2 == SELECT)) {
@@ -964,9 +967,13 @@ void EatFruit(char* snake_x, char* snake_y, Snake* snake, Coord* food) {
   if (food->x == snake_x[0] && food->y == snake_y[0]) {
     // 과일을 먹었을 때의 처리
     PlaySoundEffect(5, true);
+    
     matrix.drawRect(food->x, food->y, 2, 2, matrix.Color333(0, 0, 0));
     snake->length++;
     snake_score++;
+    prev_color = cur_color;
+    cur_color = (cur_color+1) % COLOR_COUNT;
+    InitMatrixEdge(colors[cur_color]);
     // 스네이크의 길이가 증가했으므로 새로운 과일을 생성
     GenerateFood(food, snake_x, snake_y, snake->length);
 
@@ -1008,7 +1015,7 @@ void StartSnakeMulti() {
   bool is_food = false;
   bool is_game = true;
   bool* p_is_food = &is_food;
-
+  StopBGM();
   for(int i=0;i<snake.length;i++){
     p1_snake_x[i] = P1_snake_init_coords[i].x;
     p1_snake_y[i] = P1_snake_init_coords[i].y;
@@ -1021,8 +1028,9 @@ void StartSnakeMulti() {
   MultiGenerateFood(p_food, p1_snake_x, p1_snake_y, p2_snake_x, p2_snake_y, snake.length, P2snake.length);
   matrix.drawRect(food.x, food.y, 2, 2, matrix.Color333(7, 0, 0));
 
+  track_number = 5;
   while(is_game){
-    PlayBGM(3, false);
+    PlayBGM(track_number, true);
     btn1 = ProcessInputButton1();
     if(!(btn1 == NONE || btn1 == SELECT || CheckOpposite(btn1, snake.prev_dir))){
       snake.cur_dir = btn1;
@@ -1066,21 +1074,24 @@ void StartSnakeMulti() {
       if(winner == PLAYER1){
         for(int i=0;i<3;i++){
           ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
-          delay(80);
-          PrintObject(snake_p1win, snake_p1win_num, 0, 0, matrix.Color333(0, 7, 0));
-          delay(500);
+          matrix.setCursor(5, MAT_R/ 2 - 4); 
+          matrix.print("WINNER:P1");
+          delay(2000);
         }
       }
       else if(winner == PLAYER2){
         for(int i=0;i<3;i++){
           ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
-          delay(80);
-          PrintObject(snake_p2win, snake_p2win_num, 0, 0, matrix.Color333(4, 7, 0));
-          delay(500);
+          matrix.setCursor(5, MAT_R/ 2 - 4); 
+          matrix.print("WINNER:P2");
+          delay(2000);
         }
       }
       else{
-
+          ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
+          matrix.setCursor(5, MAT_R/ 2 - 4); 
+          matrix.print("DRAW");
+          delay(2000);
       }
       break;
     }
@@ -1098,38 +1109,45 @@ bool MultiCheckCollision(char* snake_x, char* snake_y, char* othersnake_x, char*
   Coord P2head = {othersnake_x[0], othersnake_y[0]};
   int length = snake->length;
   int otherlength = othersnake->length;
+  bool is_p1collision = false;
+  bool is_p2collision = false;
   if( P1head.x < EDGE || P1head.x >= MAT_C-1-EDGE || P1head.y < EDGE || P1head.y >= MAT_R-1-EDGE){
-    *winner = PLAYER2;
-    return true;
+    is_p1collision = true;
   };
   if( P2head.x < EDGE || P2head.x >= MAT_C-1-EDGE || P2head.y < EDGE || P2head.y >= MAT_R-1-EDGE){
-    *winner = PLAYER1;
-    return true;
+    is_p2collision = true;
   };
 
   for(int i=1;i<length;i++){
     if(P1head.x == snake_x[i] && P1head.y == snake_y[i]){
-      *winner = PLAYER2;
-      return true;
+      is_p1collision = true;
     }
   }
   for(int i=0;i<otherlength;i++){
     if(P1head.x == othersnake_x[i] && P1head.y == othersnake_y[i]){
-      *winner = PLAYER2;
-      return true;
+      is_p1collision = true;
     }
   }
   for(int i=1;i<otherlength;i++){
     if(P2head.x == othersnake_x[i] && P2head.y == othersnake_y[i]){
-      *winner = PLAYER1;
-      return true;
+      is_p2collision = true;
     }
   }
   for(int i=0;i<length;i++){
     if(P2head.x == snake_x[i] && P2head.y == snake_y[i]){
-      *winner = PLAYER2;
-      return true;
+      is_p2collision = true;
     }
+  }
+  if(is_p1collision && is_p2collision){
+    return true;
+  }
+  else if(is_p1collision){
+    *winner = PLAYER2;
+    return true;
+  }
+  else if(is_p2collision){
+    *winner = PLAYER1;
+    return true;
   }
   return false;
 };
@@ -1167,6 +1185,9 @@ void MultiEatFruit(char* snake_x, char* snake_y, char* othersnake_x, char* other
     matrix.drawRect(food->x, food->y, 2, 2, matrix.Color333(0, 0, 0));
     snake->length++;
     PlaySoundEffect(5, true);
+    prev_color = cur_color;
+    cur_color = (cur_color+1) % COLOR_COUNT;
+    InitMatrixEdge(colors[cur_color]);
     // 스네이크의 길이가 증가했으므로 새로운 과일을 생성
     MultiGenerateFood(food, snake_x, snake_y, othersnake_x, othersnake_y, snake->length, othersnake->length);
 
@@ -1197,11 +1218,6 @@ void SnakeGameOver(){
   matrix.swapBuffers(true); // 버퍼 교체
   delay(3000);
 };
-
-void PrintSnakeHighScore(){
-
-};
-
 
 void PlayBreakOut(){
   bool is_breakout_over = false;
@@ -1528,6 +1544,14 @@ void BreakoutGameOver() {
   delay(2000);
 }
 
+void Displaysuccess() { 
+  matrix.fillScreen(0); // 화면 지우기
+  matrix.setCursor(20, 8); 
+  matrix.print("SUCCESS");
+  matrix.swapBuffers(true); // 버퍼 교체
+  delay(5000); 
+}
+
 void DisplayBreakoutScore() { 
   matrix.fillScreen(0); // 화면 지우기
   matrix.setCursor(5, 13); // SCORE 텍스트 위치 조정
@@ -1573,9 +1597,11 @@ void StartBreakOutMulti() {
   DrawPaddleM1();
   DrawPaddleM2();
  //텍스트 세팅
+  track_number = 6;
   matrix.setTextSize(1);
   matrix.setTextColor(matrix.Color333(7, 7, 7));
   while (true) {
+    PlayBGM(track_number, true);
     cur_ball_move = cur_paddle_move = millis();                      
     if(cur_ball_move - prev_ball_move >= BALL_DELAY){
       if (is_breakout_gameM1) {
@@ -1586,17 +1612,18 @@ void StartBreakOutMulti() {
         MoveBallM2();
         DrawBallM2();
       }
-      if (is_breakout_gameM1) {
+      is_breakout_gameM1 ? DrawEdgeM1() : RemoveLeftside();
+      /*if (is_breakout_gameM1) {
         DrawEdgeM1();
-      }
+      }*/
       if (is_breakout_gameM2) {
         DrawEdgeM2();
       }
-      if (!is_breakout_gameM1) {
-        RededgeM1();
-      }
+      /*if (!is_breakout_gameM1) {
+        RemoveLeftside();
+      }*/
       if (!is_breakout_gameM2) {
-        RededgeM2();
+        RemoveRightSide();
       }
       prev_ball_move = cur_ball_move;
     }
@@ -1618,8 +1645,8 @@ void StartBreakOutMulti() {
     } 
     prev_paddle_move = cur_paddle_move;
     if (!is_breakout_gameM1 && !is_breakout_gameM2) {
-      CalcBreakOutScoreM1();
-      CalcBreakOutScoreM2();
+      CalcBreakOutScoreM1(); //추가
+      CalcBreakOutScoreM2(); //추가
       PlaySoundEffect(3, true);
       BreakoutGameOver();
       DisplayBreakoutScoreM();
@@ -1628,15 +1655,28 @@ void StartBreakOutMulti() {
       break ;
     }
     if (breakout_scoreM1 == 348) {
+      CalcBreakOutScoreM1();
+      CalcBreakOutScoreM2();
       PlaySoundEffect(3, true);
+      WinnerP1(); //추가
       DisplayBreakoutScore();
       StopBGM();
       ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
       break ;
     }
-
+    if (breakout_scoreM2 == 348) {
+      CalcBreakOutScoreM1();
+      CalcBreakOutScoreM2();
+      PlaySoundEffect(3, true);
+      WinnerP2(); //추가
+      DisplayBreakoutScore();
+      StopBGM();
+      ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
+      break ;
+    }
   }
 };
+
 //모서리 벽 그리기 함수1(멀티)
 void DrawEdgeM1() {
   matrix.drawLine(0,0,0,31,matrix.Color333(0,7,0));
@@ -1714,8 +1754,6 @@ void InitBreakOutM() {
   }
 }
 
-// 공을 움직이는 함수1(멀티)
-// 공을 움직이는 함수1(멀티)
 void MoveBallM1() {
   // 현재 위치에서 공을 지웁니다.
   bool is_M1paddle_L;
@@ -1745,9 +1783,14 @@ void MoveBallM1() {
     is_breakout_gameM1 = false;
     return;
   }
-  if (is_M1paddle_L) {
+  if (is_M1paddle_L && M1ballX != 3) {
     M1ballSpeedY = -M1ballSpeedY;
     M1ballSpeedX = -1;
+    return;
+  }
+  if (is_M1paddle_L && M1ballX == 3) {
+    M1ballSpeedY = -M1ballSpeedY;
+    M1ballSpeedX = 1;
     return;
   }
   if (is_M1paddle_M) {
@@ -1755,9 +1798,14 @@ void MoveBallM1() {
     M1ballSpeedX = 0;
     return;
   }
-  if (is_M1paddle_R) {
+  if (is_M1paddle_R && M1ballX != 29) {
     M1ballSpeedY = -M1ballSpeedY;
     M1ballSpeedX = 1;
+    return;
+  }
+  if (is_M1paddle_R && M1ballX == 29) {
+    M1ballSpeedY = -M1ballSpeedY;
+    M1ballSpeedX = -1;
     return;
   }
   // 벽에 부딪혔다면 방향을 변경합니다.
@@ -1848,9 +1896,14 @@ void MoveBallM2() {
     is_breakout_gameM2 = false;
     return;
   }
-  if (is_M2paddle_L) {
+  if (is_M2paddle_L && M2ballX != 34) {
     M2ballSpeedY = -M2ballSpeedY;
     M2ballSpeedX = -1;
+    return;
+  }
+  if (is_M2paddle_L && M2ballX == 34) {
+    M2ballSpeedY = -M2ballSpeedY;
+    M2ballSpeedX = 1;
     return;
   }
   if (is_M2paddle_M) {
@@ -1858,9 +1911,14 @@ void MoveBallM2() {
     M2ballSpeedX = 0;
     return;
   }
-  if (is_M2paddle_R) {
+  if (is_M2paddle_R && M2ballX != 60) {
     M2ballSpeedY = -M2ballSpeedY;
     M2ballSpeedX = 1;
+    return;
+  }
+if (is_M2paddle_R && M2ballX == 60) {
+    M2ballSpeedY = -M2ballSpeedY;
+    M2ballSpeedX = -1;
     return;
   }
   // 벽에 부딪혔다면 방향을 변경합니다.
@@ -1921,7 +1979,6 @@ void MoveBallM2() {
   }
 }
 
-
 //패들 움직이는 함수1(멀티)
 void MovePaddleM1() {
   int btn1 = ProcessInputButton1();
@@ -1974,19 +2031,6 @@ void CalcBreakOutScoreM2() {
   }
 }
 
-//RED EDGE 함수1(멀티)
-void RededgeM1(){
- matrix.drawLine(31,1,31,31,matrix.Color333(7,2,0));
- matrix.drawLine(1,1,1,31,matrix.Color333(7,2,0));
- matrix.drawLine(1,1,31,1,matrix.Color333(7,2,0));
-}
-
-//RED EDGE 함수2(멀티)
-void RededgeM2(){
- matrix.drawLine(32,1,32,31,matrix.Color333(7,2,0));
- matrix.drawLine(62,1,62,31,matrix.Color333(7,2,0));
- matrix.drawLine(32,1,62,1,matrix.Color333(7,2,0));
-}
 void DisplayBreakoutScoreM() { 
   matrix.fillScreen(0); // 화면 지우기
   matrix.setCursor(18, 7); // SCORE 텍스트 위치 조정
@@ -1999,4 +2043,33 @@ void DisplayBreakoutScoreM() {
   matrix.print(breakout_scoreM2);
   matrix.swapBuffers(true); // 버퍼 교체
   delay(5000); // 5초 동안 SCORE 화면 유지
+}
+
+void RemoveLeftside() {
+  matrix.fillRect(2,2,29,28,matrix.Color333(0,0,0));
+  matrix.drawLine(2,2,30,29,matrix.Color333(3,0,0));
+  matrix.drawLine(2,29,30,2,matrix.Color333(3,0,0));
+}
+
+void RemoveRightSide() {
+  matrix.fillRect(33,29,29,28,matrix.Color333(0,0,0));
+  matrix.drawLine(33,29,61,2,matrix.Color333(3,0,0));
+  matrix.drawLine(33,2,61,29,matrix.Color333(3,0,0));
+}
+
+void WinnerP1() {
+  for(int i=0;i<3;i++) {
+    ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
+    matrix.setCursor(5, MAT_R/ 2 - 4); 
+    matrix.print("WINNER:P1");
+    delay(2000);
+    }
+}
+void WinnerP2() {
+  for(int i=0;i<3;i++) {
+    ClearMatrix(EDGE, EDGE, MAT_C-2*EDGE, MAT_R-2*EDGE);
+    matrix.setCursor(5, MAT_R/ 2 - 4); 
+    matrix.print("WINNER:P1");
+    delay(2000);
+    }
 }
